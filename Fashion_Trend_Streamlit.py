@@ -10,11 +10,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 1. Mock Data Generation Function ---
-# This function creates synthetic data to simulate sales and product preferences 
-# across different city tiers, ensuring the app runs without external files.
+# --- 1. Mock Data Generation Functions ---
+# Generate synthetic sales data
 @st.cache_data
-def generate_mock_data():
+def generate_sales_data():
     """Generates a synthetic dataset for fashion sales segmented by city tier."""
     np.random.seed(42)  # for reproducibility
     tiers = ['Tier 1', 'Tier 2', 'Tier 3']
@@ -25,7 +24,6 @@ def generate_mock_data():
         {'name': 'Accessories', 'T1_ratio': 0.15, 'T2_ratio': 0.10, 'T3_ratio': 0.10, 'price': 30},
         {'name': 'Outerwear', 'T1_ratio': 0.30, 'T2_ratio': 0.25, 'T3_ratio': 0.25, 'price': 120}
     ]
-    # Assume Tier 1 has the highest total market value
     base_sales = {
         'Tier 1': 350000,
         'Tier 2': 250000,
@@ -34,18 +32,11 @@ def generate_mock_data():
 
     data = []
     for tier in tiers:
-        # Extract the tier number (e.g., '1' from 'Tier 1')
         tier_num = tier.split(' ')[1] 
         for cat in categories:
             sales_ratio = cat[f'T{tier_num}_ratio']
-            
-            # Sales with slight randomness
             sales = base_sales[tier] * sales_ratio * (1 + (np.random.rand() - 0.5) * 0.2)
-            
-            # Average price with slight randomness
             avg_price = cat['price'] * (1 + (np.random.rand() - 0.5) * 0.1)
-            
-            # Calculate unit count
             count = sales / avg_price 
             
             data.append({
@@ -56,15 +47,40 @@ def generate_mock_data():
                 'Avg_Price': avg_price
             })
 
-    df = pd.DataFrame(data)
-    return df
+    return pd.DataFrame(data)
+
+# Generate mock geographic data for India
+@st.cache_data
+def generate_city_tier_data():
+    """Generates synthetic city tier data for mapping."""
+    city_data = [
+        # Tier 1 Cities
+        {'City': 'Mumbai', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 19.0760, 'Lon': 72.8777},
+        {'City': 'Delhi', 'State': 'Delhi', 'Tier': 'Tier 1', 'Lat': 28.7041, 'Lon': 77.1025},
+        {'City': 'Bangalore', 'State': 'Karnataka', 'Tier': 'Tier 1', 'Lat': 12.9716, 'Lon': 77.5946},
+        {'City': 'Hyderabad', 'State': 'Telangana', 'Tier': 'Tier 1', 'Lat': 17.3850, 'Lon': 78.4867},
+        
+        # Tier 2 Cities
+        {'City': 'Jaipur', 'State': 'Rajasthan', 'Tier': 'Tier 2', 'Lat': 26.9124, 'Lon': 75.7873},
+        {'City': 'Lucknow', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 26.8467, 'Lon': 80.9462},
+        {'City': 'Pune', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 18.5204, 'Lon': 73.8567},
+        {'City': 'Ahmedabad', 'State': 'Gujarat', 'Tier': 'Tier 2', 'Lat': 23.0225, 'Lon': 72.5714},
+        
+        # Tier 3 Cities (Diverse locations for spread)
+        {'City': 'Kochi', 'State': 'Kerala', 'Tier': 'Tier 3', 'Lat': 9.9312, 'Lon': 76.2673},
+        {'City': 'Chandigarh', 'State': 'Punjab/Haryana', 'Tier': 'Tier 3', 'Lat': 30.7333, 'Lon': 76.7794},
+        {'City': 'Nagpur', 'State': 'Maharashtra', 'Tier': 'Tier 3', 'Lat': 21.1458, 'Lon': 79.0882},
+        {'City': 'Indore', 'State': 'Madhya Pradesh', 'Tier': 'Tier 3', 'Lat': 22.7196, 'Lon': 75.8577}
+    ]
+    return pd.DataFrame(city_data)
 
 # Load the data
-df = generate_mock_data()
+df_sales = generate_sales_data()
+df_cities = generate_city_tier_data()
 
 # --- 2. Dashboard Title and Description ---
-st.title("🛍️ Fashion Target Audience Segmentation")
-st.markdown("Analyze **Sales Value**, **Product Mix**, and **Average Price Points** across **City Tiers** to strategically choose your market.")
+st.title("🛍️ Fashion Market Segmentation & Strategy Dashboard")
+st.markdown("Analyze **Sales Value**, **Product Mix**, and **Geographic Distribution** across **City Tiers** to strategically choose your market and pricing strategy.")
 st.markdown("---")
 
 # --- 3. Sidebar (Tier Selector) ---
@@ -78,16 +94,15 @@ selected_tier = st.sidebar.selectbox(
 # --- 4. Data Filtering and KPI Calculation ---
 
 # Aggregate Total Tier Sales (for Chart 1: Sales Contribution)
-df_tier_agg = df.groupby('Tier').agg(
+df_tier_agg = df_sales.groupby('Tier').agg(
     TotalSales=('Sales', 'sum'),
     TotalCount=('Count', 'sum')
 ).reset_index()
-# Calculate overall average price for all tiers
 df_tier_agg['AvgPrice'] = df_tier_agg['TotalSales'] / df_tier_agg['TotalCount']
 
 
 # Filter data for the user's selected tier (for KPIs and Chart 2: Product Mix)
-df_selected_tier = df[df['Tier'] == selected_tier]
+df_selected_tier = df_sales[df_sales['Tier'] == selected_tier]
 
 # Calculate Key Performance Indicators (KPIs)
 total_sales = df_selected_tier['Sales'].sum()
@@ -107,7 +122,6 @@ with col1:
     )
 
 with col2:
-    # Use the weighted average price
     st.metric(
         label="Weighted Avg. Price Point",
         value=f"${avg_price_weighted:,.2f}",
@@ -123,7 +137,69 @@ with col3:
 
 st.markdown("---")
 
-# --- 6. Visualizations (Bottom Row) ---
+# --- 6. Dynamic Client Explanation/Takeaway ---
+st.header("Client Presentation Summary")
+st.subheader(f"Strategy Focus: **{selected_tier}**")
+
+def get_client_insight(tier):
+    """Generates a dynamic explanation for client presentation."""
+    if tier == 'Tier 1':
+        return """
+        <div style='background-color: #e0f2fe; padding: 15px; border-radius: 10px; border-left: 5px solid #0284c7;'>
+        <h4 style='color: #0284c7;'>High-Value Market Strategy (Tier 1)</h4>
+        <p>This segment represents the **highest value market** with significant purchasing power, supporting premium pricing. Our focus should be on **high-margin goods** like <b>Outerwear</b> and <b>Dresses</b>. The strategy here is quality, brand visibility, and high average transaction value.</p>
+        </div>
+        """
+    elif tier == 'Tier 2':
+        return """
+        <div style='background-color: #ecfdf5; padding: 15px; border-radius: 10px; border-left: 5px solid #059669;'>
+        <h4 style='color: #059669;'>Balanced Growth Strategy (Tier 2)</h4>
+        <p>Tier 2 offers a strong balance of volume and value. While the average price is moderate, there is significant growth potential across categories like <b>Jeans</b> and <b>Outerwear</b>. We recommend a **mixed pricing strategy** focusing on perceived value and promotions to build loyalty.</p>
+        </div>
+        """
+    else:
+        return """
+        <div style='background-color: #fffbeb; padding: 15px; border-radius: 10px; border-left: 5px solid #f59e0b;'>
+        <h4 style='color: #f59e0b;'>Volume & Accessibility Strategy (Tier 3)</h4>
+        <p>This segment is **highly price-sensitive** but offers the largest potential for volume sales. The dominant product is <b>T-Shirts</b>. Our strategy must be **cost-leadership**, focusing on essential, affordable apparel and optimizing logistics for wider reach.</p>
+        </div>
+        """
+
+st.markdown(get_client_insight(selected_tier), unsafe_allow_html=True)
+st.markdown("---")
+
+# --- 7. Geographic Visualization (Map) ---
+st.header("🇮🇳 Market Distribution: City Tier Map")
+
+# Map chart using Plotly Express (requires mapbox token for detailed tiles, 
+# but uses default open-source tiles if not available)
+fig_map = px.scatter_mapbox(
+    df_cities,
+    lat="Lat",
+    lon="Lon",
+    hover_name="City",
+    hover_data={"State": True, "Tier": True, "Lat": False, "Lon": False},
+    color="Tier",
+    size_max=25,
+    zoom=3.5,  # Center the map over India
+    center={"lat": 23.5, "lon": 78}, # Approximate center of India
+    title="Indian Cities by Market Tier",
+    color_discrete_map={
+        'Tier 1': '#4F46E5', # Indigo
+        'Tier 2': '#10B981', # Emerald
+        'Tier 3': '#F59E0B'  # Amber
+    }
+)
+
+# Set map style to a standard public tile set (Open Street Map)
+fig_map.update_layout(mapbox_style="open-street-map")
+fig_map.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
+
+st.plotly_chart(fig_map, use_container_width=True)
+
+st.markdown("---")
+
+# --- 8. Core Visualizations (Bottom Row) ---
 chart_col1, chart_col2 = st.columns(2)
 
 # Chart 1: Sales Contribution by City Tier (Bar Chart)
@@ -137,18 +213,15 @@ with chart_col1:
         color='Tier',
         title="Total Market Value Breakdown",
         labels={'TotalSales': 'Total Sales Value ($)', 'Tier': 'City Tier'},
-        # Customize colors for better visual separation
         color_discrete_map={
-            'Tier 1': '#4F46E5',  # Indigo
-            'Tier 2': '#10B981',  # Emerald
-            'Tier 3': '#F59E0B'   # Amber
+            'Tier 1': '#4F46E5',  
+            'Tier 2': '#10B981',  
+            'Tier 3': '#F59E0B'   
         }
     )
-    # Highlight the selected tier by adding a border
     for tier, color in zip(['Tier 1', 'Tier 2', 'Tier 3'], ['#4F46E5', '#10B981', '#F59E0B']):
         if tier == selected_tier:
             fig_bar.update_traces(marker_line_color='black', marker_line_width=3, selector=dict(name=tier))
-
 
     fig_bar.update_layout(showlegend=False, xaxis={'categoryorder':'total descending'})
     fig_bar.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
@@ -158,7 +231,6 @@ with chart_col1:
 with chart_col2:
     st.subheader(f"Product Mix: {selected_tier}")
     
-    # Aggregate category sales for the pie chart
     df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
 
     fig_pie = px.pie(
@@ -166,20 +238,11 @@ with chart_col2:
         values='Sales',
         names='Category',
         title=f"Category Revenue Distribution in {selected_tier}",
-        hole=.5, # Creates a donut chart
-        color_discrete_sequence=px.colors.sequential.Plasma_r # Use a professional color sequence
+        hole=.5, 
+        color_discrete_sequence=px.colors.sequential.Plasma_r
     )
     fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
     st.plotly_chart(fig_pie, use_container_width=True)
 
-# --- 7. Strategic Insights Section ---
-st.markdown("## 💡 Strategic Insights")
-if selected_tier == 'Tier 1':
-    st.info("Tier 1 cities show the highest overall sales value and support the highest average price points. Focus on **Outerwear** and **Dresses** for maximum revenue.")
-elif selected_tier == 'Tier 2':
-    st.info("Tier 2 cities offer a strong, balanced market. **Jeans** and **Outerwear** are strong performers. A mid-range price strategy is generally effective here.")
-else:
-    st.info("Tier 3 cities are highly price-sensitive but offer a large volume opportunity (T-Shirts). Focus on **T-Shirts** and other essential, lower-priced apparel to capture this market.")
 
-st.markdown("---")
-st.caption("Data is synthetic and based on estimated ratios for demonstration purposes.")
+st.caption("Sales and City Tier data are synthetic for demonstration purposes.")
