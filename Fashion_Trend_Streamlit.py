@@ -197,7 +197,6 @@ gender_filter = st.sidebar.selectbox(
 # --- 4. Data Filtering and KPI Calculation ---
 
 # Filter data based on selected tiers, category, AND gender
-# MAJOR CHANGE: Filter by the list of selected tiers
 df_selected_tier = df_sales[df_sales['Tier'].isin(selected_tiers)].copy()
 
 if category_filter != 'All Categories':
@@ -342,7 +341,7 @@ st.plotly_chart(fig_map, use_container_width=True)
 st.markdown("---")
 
 # --- 8. Core Visualizations (Bottom Row - Dynamic) ---
-st.header("Detailed Performance Analysis")
+st.header("Detailed Performance Analysis (Strategic Pillars)")
 chart_col1, chart_col2 = st.columns(2)
 chart_col3, chart_col4 = st.columns(2)
 
@@ -488,6 +487,71 @@ else:
             fig_price_comp.update_traces(texttemplate='$%{y:,.2f}', textposition='outside')
             st.plotly_chart(fig_price_comp, use_container_width=True)
             st.info(f"This chart compares the price points for **{category_filter}** across the **{', '.join(selected_tiers)}** audience segments.")
+
+
+# --- 9. Product Deep Dive Analysis ---
+st.markdown("---")
+st.header("🛒 Product Deep Dive & Portfolio Analysis")
+
+deep_col1, deep_col2 = st.columns(2)
+
+if df_selected_tier.empty:
+    st.error("No sales data available for the selected combination of Tiers, Category, and Gender.")
+
+else:
+    # --- New Chart 5: Treemap for Overall Product Share ---
+    with deep_col1:
+        st.subheader("Product Revenue Share by Tier & Category")
+        
+        # Aggregate sales by Tier and Category
+        df_treemap = df_selected_tier.groupby(['Tier', 'Category'])['Sales'].sum().reset_index()
+
+        fig_treemap = px.treemap(
+            df_treemap,
+            path=[px.Constant("All Selected Segments"), 'Tier', 'Category'],
+            values='Sales',
+            color='Tier',
+            color_discrete_map={'(?)': '#262730', 'Tier 1': TIER_COLORS['Tier 1'], 'Tier 2': TIER_COLORS['Tier 2'], 'Tier 3': TIER_COLORS['Tier 3']},
+            title="Revenue Contribution Breakdown (Tier > Category)",
+            hover_data={'Sales': ':.2s'}
+        )
+        fig_treemap.update_layout(margin=dict(t=50, l=25, r=25, b=25))
+        st.plotly_chart(fig_treemap, use_container_width=True)
+        st.caption("Drill down by clicking on the Tier blocks to see Category contribution.")
+
+
+    # --- New Chart 6: Portfolio Efficiency (Sales vs. Count) ---
+    with deep_col2:
+        st.subheader("Portfolio Efficiency: Sales Value vs. Volume")
+        
+        # Aggregate data by Category for the scatter plot
+        df_scatter = df_selected_tier.groupby('Category').agg(
+            TotalSales=('Sales', 'sum'),
+            TotalCount=('Count', 'sum'),
+            AvgPrice=('Avg_Price', 'mean')
+        ).reset_index()
+
+        fig_scatter = px.scatter(
+            df_scatter,
+            x='TotalCount',
+            y='TotalSales',
+            size='AvgPrice', # Use AvgPrice to size the bubbles
+            color='Category',
+            hover_name='Category',
+            title="Product Positioning (Sales Volume vs. Revenue)",
+            labels={'TotalCount': 'Total Units Sold (Volume)', 'TotalSales': 'Total Revenue ($)', 'AvgPrice': 'Avg. Price'},
+        )
+        # Add labels to the quadrants for strategic interpretation
+        fig_scatter.add_vline(x=df_scatter['TotalCount'].mean(), line_width=1, line_dash="dash", line_color="gray")
+        fig_scatter.add_hline(y=df_scatter['TotalSales'].mean(), line_width=1, line_dash="dash", line_color="gray")
+        
+        fig_scatter.update_layout(
+            xaxis_title="Volume (Units Sold)",
+            yaxis_title="Revenue ($)",
+            legend_title="Category"
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.caption("Top-right quadrant items are Bestsellers (High Revenue, High Volume).")
 
 
 st.caption("Sales and City Tier data are synthetic for demonstration purposes.")
