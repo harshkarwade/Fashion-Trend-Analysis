@@ -208,7 +208,7 @@ if gender_filter != 'All Genders':
 
 # Calculate Key Performance Indicators (KPIs)
 total_sales = df_selected_tier['Sales'].sum() if not df_selected_tier.empty else 0
-total_count = df_selected_tier['Count'].sum() if not df_selected_tier.empty else 0
+total_count = df_selected_tier['Count'].sum() if total_sales > 0 else 0 # Ensure count is 0 if sales is 0
 avg_price_weighted = total_sales / total_count if total_count > 0 else 0
 # Weighted Average Discount
 weighted_avg_discount = (df_selected_tier['Discount_Pct'] * df_selected_tier['Sales']).sum() / total_sales if total_sales > 0 else 0
@@ -351,9 +351,9 @@ if df_selected_tier.empty:
     st.error("No sales data available for the selected combination of Tiers, Category, and Gender.")
 
 else:
-    # Chart 1: Price Segment Breakdown (Low/Mid/Premium/Luxury)
+    # Chart 1: Price Segmentation Analysis (Price Segment Breakdown)
     with chart_col1:
-        st.subheader(f"Price Segment Breakdown in {filter_title}")
+        st.subheader(f"1. Price Segmentation Analysis in {filter_title}")
         df_price_seg = df_selected_tier.groupby('Price_Segment')['Sales'].sum().reset_index()
         segment_order = ['Low-End', 'Mid-Range', 'Premium', 'Luxury']
         df_price_seg['Price_Segment'] = pd.Categorical(df_price_seg['Price_Segment'], categories=segment_order, ordered=True)
@@ -372,9 +372,9 @@ else:
         fig_seg.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_seg, use_container_width=True)
 
-    # Chart 2: Discount Rate Distribution (Price Sensitivity)
+    # Chart 2: Discount Strategy Analysis (Discount Rate Distribution)
     with chart_col2:
-        st.subheader(f"Discount Rate Distribution in {filter_title}")
+        st.subheader(f"2. Discount Strategy Analysis in {filter_title}")
         bins = [0, 10, 20, 30, 40, 50, 100]
         labels = ['0-10%', '10-20%', '20-30%', '30-40%', '40-50%', '50%+']
         
@@ -388,7 +388,7 @@ else:
             x='Discount_Group',
             y='Sales',
             color='Discount_Group',
-            title="Sales Volume by Discount Range",
+            title="Sales Volume by Discount Range (Price Elasticity)",
             labels={'Sales': 'Total Sales ($)', 'Discount_Group': 'Discount Range'},
             color_discrete_sequence=px.colors.sequential.Cividis_r
         )
@@ -396,44 +396,45 @@ else:
         fig_disc.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_disc, use_container_width=True)
 
-    # Chart 3: Gender Sales Split (If 'All Genders' is selected) or Tier Split (if multiple tiers selected)
+    # Chart 3: Gender Focus Trend Analysis (Gender Split or Tier Split)
     with chart_col3:
-        if gender_filter == 'All Genders' and len(selected_tiers) < 3:
-            st.subheader(f"Sales Split by Gender in {filter_title}")
-            df_gender_mix = df_selected_tier.groupby('Gender')['Sales'].sum().reset_index()
-            fig_gender_pie = px.pie(
-                df_gender_mix,
-                values='Sales',
-                names='Gender',
-                title="Gender Revenue Distribution",
-                hole=.5,
-                color_discrete_sequence=px.colors.qualitative.Pastel
-            )
-            fig_gender_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
-            st.plotly_chart(fig_gender_pie, use_container_width=True)
-
-        elif len(selected_tiers) > 1:
-            st.subheader(f"Tier Sales Contribution to {filter_title}")
+        if len(selected_tiers) > 1:
+            # Priority 1: Show Tier Contribution if multiple tiers are selected
+            st.subheader(f"3. Gender/Focus Trend: Sales Split by Tier")
             df_tier_split = df_selected_tier.groupby('Tier')['Sales'].sum().reset_index()
             fig_tier_split = px.pie(
                 df_tier_split,
                 values='Sales',
                 names='Tier',
-                title="Sales Contribution by Tier",
+                title="Tier Sales Contribution (Overall Focus)",
                 hole=.5,
                 color_discrete_map=TIER_COLORS
             )
             fig_tier_split.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
             st.plotly_chart(fig_tier_split, use_container_width=True)
-        
+
         else:
-             st.info(f"The filter is set to **{selected_tiers[0]}** and **{gender_filter}**. Total Sales: **${total_sales:,.0f}**")
+            # Priority 2: Show Gender Split for the single selected Tier
+            st.subheader(f"3. Gender/Focus Trend: Sales Split by Gender")
+            df_gender_mix = df_selected_tier.groupby('Gender')['Sales'].sum().reset_index()
+            fig_gender_bar = px.bar(
+                df_gender_mix,
+                x='Gender',
+                y='Sales',
+                color='Gender',
+                title=f"Gender Revenue Distribution in {selected_tiers[0]}",
+                labels={'Sales': 'Total Sales ($)'},
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_gender_bar.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
+            fig_gender_bar.update_layout(xaxis_title="", yaxis_title="")
+            st.plotly_chart(fig_gender_bar, use_container_width=True)
 
 
-    # Chart 4: Product Mix (or Single Category Price Comparison)
+    # Chart 4: Brand Level Strategy Profile (Product Mix or Strategic Pricing Comparison)
     with chart_col4:
         if category_filter == 'All Categories':
-            st.subheader(f"Product Mix: {filter_title}")
+            st.subheader(f"4. Brand Strategy Profile: Product Mix")
             df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
             fig_pie = px.pie(
                 df_category_mix,
@@ -447,7 +448,7 @@ else:
             st.plotly_chart(fig_pie, use_container_width=True)
         else:
             # Compare the selected category's average price across ALL selected tiers
-            st.subheader(f"Strategic Pricing: {category_filter} Avg. Price Across Selected Tiers")
+            st.subheader(f"4. Brand Strategy Profile: Strategic Pricing Comparison")
             
             # Filter the full data only by the selected category and gender
             df_price_comp = df_sales[
