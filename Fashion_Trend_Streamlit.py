@@ -123,12 +123,19 @@ st.title("🛍️ Fashion Market Segmentation & Strategy Dashboard")
 st.markdown("Analyze **Sales Value**, **Product Mix**, and **Geographic Distribution** across **City Tiers** to strategically choose your market and pricing strategy.")
 st.markdown("---")
 
-# --- 3. Sidebar (Tier Selector) ---
+# --- 3. Sidebar (Tier Selector) and Category Filter ---
 st.sidebar.header("🎯 Target Audience Filter")
 selected_tier = st.sidebar.selectbox(
-    "Select a city tier for focused analysis:",
+    "1. Select a City Tier:",
     options=['Tier 1', 'Tier 2', 'Tier 3'],
     index=0
+)
+
+# New Category Filter
+all_categories = ['All Categories'] + df_sales['Category'].unique().tolist()
+category_filter = st.sidebar.selectbox(
+    "2. Filter by Product Category:",
+    options=all_categories
 )
 
 # --- 4. Data Filtering and KPI Calculation ---
@@ -141,38 +148,54 @@ df_tier_agg = df_sales.groupby('Tier').agg(
 df_tier_agg['AvgPrice'] = df_tier_agg['TotalSales'] / df_tier_agg['TotalCount']
 
 
-# Filter data for the user's selected tier (for KPIs and Chart 2: Product Mix)
-df_selected_tier = df_sales[df_sales['Tier'] == selected_tier]
+# Filter data based on selected tier AND category
+df_selected_tier = df_sales[df_sales['Tier'] == selected_tier].copy()
+
+if category_filter != 'All Categories':
+    df_selected_tier = df_selected_tier[df_selected_tier['Category'] == category_filter].copy()
 
 # Calculate Key Performance Indicators (KPIs)
-total_sales = df_selected_tier['Sales'].sum()
-avg_price_weighted = df_selected_tier['Sales'].sum() / df_selected_tier['Count'].sum()
-top_category = df_selected_tier.groupby('Category')['Sales'].sum().idxmax()
+total_sales = df_selected_tier['Sales'].sum() if not df_selected_tier.empty else 0
+total_count = df_selected_tier['Count'].sum() if not df_selected_tier.empty else 0
+avg_price_weighted = total_sales / total_count if total_count > 0 else 0
 
+if category_filter == 'All Categories':
+    # Find the top category only if 'All Categories' is selected
+    top_category = df_selected_tier.groupby('Category')['Sales'].sum().idxmax() if not df_selected_tier.empty else 'N/A'
+    category_label = "Most Popular Category (By Sales)"
+    category_value = top_category
+else:
+    # If a category is selected, just show the selected category name
+    category_label = "Selected Product Category"
+    category_value = category_filter
 
 # --- 5. KPI Metrics (Top Row) ---
-st.header(f"Key Metrics for {selected_tier}")
+filter_title = f"{selected_tier}"
+if category_filter != 'All Categories':
+    filter_title += f" ({category_filter} Focus)"
+
+st.header(f"Key Metrics for {filter_title}")
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
         label="Total Sales Value",
         value=f"${total_sales:,.0f}",
-        help="Total potential revenue from this market segment."
+        help="Total potential revenue for this segment and category filter."
     )
 
 with col2:
     st.metric(
         label="Weighted Avg. Price Point",
         value=f"${avg_price_weighted:,.2f}",
-        help="Indicates the typical price point for items sold in this tier. Crucial for pricing strategy."
+        help="The typical price point for items sold in this filtered segment."
     )
 
 with col3:
     st.metric(
-        label="Most Popular Category (By Sales)",
-        value=top_category,
-        help="The product category that generates the most revenue."
+        label=category_label,
+        value=category_value,
+        help="The dominant product if viewing all categories, or the currently filtered category."
     )
 
 st.markdown("---")
@@ -181,35 +204,33 @@ st.markdown("---")
 st.header("Client Presentation Summary")
 st.subheader(f"Strategy Focus: **{selected_tier}**")
 
-def get_client_insight(tier):
+def get_client_insight(tier, category):
     """Generates a dynamic explanation for client presentation."""
-    
-    # Get the list of cities for the selected tier
     city_list = df_cities[df_cities['Tier'] == tier]['City'].tolist()
     
-    if tier == 'Tier 1':
-        return f"""
-        <div style='background-color: #e0f2fe; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 1']};'>
-        <h4 style='color: {TIER_COLORS['Tier 1']};'>High-Value Market Strategy (Tier 1)</h4>
-        <p>This segment represents the **highest value market** with significant purchasing power, supporting premium pricing. Our focus should be on **high-margin goods** like <b>Outerwear</b> and <b>Dresses</b>. The strategy here is quality, brand visibility, and high average transaction value. **Target cities are: {', '.join(city_list)}.**</p>
-        </div>
-        """
-    elif tier == 'Tier 2':
-        return f"""
-        <div style='background-color: #ecfdf5; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 2']};'>
-        <h4 style='color: {TIER_COLORS['Tier 2']};'>Balanced Growth Strategy (Tier 2)</h4>
-        <p>Tier 2 offers a strong balance of volume and value. While the average price is moderate, there is significant growth potential across categories like <b>Jeans</b> and <b>Outerwear</b>. We recommend a **mixed pricing strategy** focusing on perceived value and promotions to build loyalty. **Target cities are: {', '.join(city_list)}.**</p>
-        </div>
-        """
-    else:
-        return f"""
-        <div style='background-color: #fffbeb; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 3']};'>
-        <h4 style='color: {TIER_COLORS['Tier 3']};'>Volume & Accessibility Strategy (Tier 3)</h4>
-        <p>This segment is **highly price-sensitive** but offers the largest potential for volume sales. The dominant product is <b>T-Shirts</b>. Our strategy must be **cost-leadership**, focusing on essential, affordable apparel and optimizing logistics for wider reach. **Target cities are: {', '.join(city_list)}.**</p>
-        </div>
-        """
+    cat_text = f"focusing only on **{category}**" if category != 'All Categories' else "covering all product categories"
 
-st.markdown(get_client_insight(selected_tier), unsafe_allow_html=True)
+    if tier == 'Tier 1':
+        title = "High-Value Market Strategy (Tier 1)"
+        insight = f"This segment supports premium pricing. {cat_text.capitalize()}, the strategy here is to emphasize quality, brand visibility, and high average transaction value. **Target cities are: {', '.join(city_list)}.**"
+        color = TIER_COLORS['Tier 1']
+    elif tier == 'Tier 2':
+        title = "Balanced Growth Strategy (Tier 2)"
+        insight = f"Tier 2 offers a strong balance of volume and value. {cat_text.capitalize()}, we recommend a mixed pricing strategy focusing on perceived value and promotions to build loyalty. **Target cities are: {', '.join(city_list)}.**"
+        color = TIER_COLORS['Tier 2']
+    else:
+        title = "Volume & Accessibility Strategy (Tier 3)"
+        insight = f"This segment is highly price-sensitive but offers the largest potential for volume sales. {cat_text.capitalize()}, our strategy must be cost-leadership, focusing on essential, affordable apparel. **Target cities are: {', '.join(city_list)}.**"
+        color = TIER_COLORS['Tier 3']
+
+    return f"""
+        <div style='background-color: {color}1A; padding: 15px; border-radius: 10px; border-left: 5px solid {color};'>
+        <h4 style='color: {color};'>{title}</h4>
+        <p>{insight}</p>
+        </div>
+    """
+
+st.markdown(get_client_insight(selected_tier, category_filter), unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 7. Geographic Visualization (Map) ---
@@ -255,39 +276,63 @@ chart_col1, chart_col2 = st.columns(2)
 with chart_col1:
     st.subheader("Market Potential: Sales Contribution by Tier")
     
+    # This chart remains unfiltered by Category to show total tier potential
     fig_bar = px.bar(
         df_tier_agg,
         x='Tier',
         y='TotalSales',
         color='Tier',
-        title="Total Market Value Breakdown",
+        title="Total Market Value Breakdown (All Categories)",
         labels={'TotalSales': 'Total Sales Value ($)', 'Tier': 'City Tier'},
         color_discrete_map=TIER_COLORS
     )
     for tier in TIER_COLORS.keys():
         if tier == selected_tier:
+            # Highlight the selected tier for context
             fig_bar.update_traces(marker_line_color='black', marker_line_width=3, selector=dict(name=tier))
 
     fig_bar.update_layout(showlegend=False, xaxis={'categoryorder':'total descending'})
     fig_bar.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
     st.plotly_chart(fig_bar, use_container_width=True)
 
-# Chart 2: Product Mix for Selected Tier (Donut Chart)
+# Chart 2: Product Mix (or Single Category View) for Selected Tier
 with chart_col2:
-    st.subheader(f"Product Mix: {selected_tier}")
-    
-    df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
-
-    fig_pie = px.pie(
-        df_category_mix,
-        values='Sales',
-        names='Category',
-        title=f"Category Revenue Distribution in {selected_tier}",
-        hole=.5, 
-        color_discrete_sequence=px.colors.sequential.Plasma_r
-    )
-    fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
-    st.plotly_chart(fig_pie, use_container_width=True)
+    if category_filter == 'All Categories':
+        st.subheader(f"Product Mix: {selected_tier}")
+        df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
+        fig_pie = px.pie(
+            df_category_mix,
+            values='Sales',
+            names='Category',
+            title=f"Category Revenue Distribution in {selected_tier}",
+            hole=.5, 
+            color_discrete_sequence=px.colors.sequential.Plasma_r
+        )
+        fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
+    else:
+        st.subheader(f"Category Sales Trend: {selected_tier} ({category_filter})")
+        # Since we have aggregated sales data, we'll display a simple metric or bar for single category view
+        fig_pie = st.empty() # Placeholder
+        st.info(f"The total sales for **{category_filter}** in **{selected_tier}** is **${total_sales:,.0f}** at an average price of **${avg_price_weighted:,.2f}**.")
+        
+        # Display a simple horizontal bar to visualize volume
+        df_cat_summary = pd.DataFrame({
+            'Metric': ['Sales Value'],
+            'Value': [total_sales]
+        })
+        fig_bar_single = px.bar(
+            df_cat_summary, 
+            x='Value', 
+            y='Metric', 
+            orientation='h', 
+            title=f"Sales Value of {category_filter}",
+            color_discrete_sequence=[TIER_COLORS[selected_tier]]
+        )
+        fig_bar_single.update_layout(yaxis={'visible': False, 'showticklabels': False}, xaxis_title="")
+        st.plotly_chart(fig_bar_single, use_container_width=True)
+        
+    if category_filter == 'All Categories':
+        st.plotly_chart(fig_pie, use_container_width=True)
 
 
 st.caption("Sales and City Tier data are synthetic for demonstration purposes.")
