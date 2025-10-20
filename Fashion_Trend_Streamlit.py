@@ -59,25 +59,58 @@ def generate_sales_data():
 # Generate mock geographic data for India
 @st.cache_data
 def generate_city_tier_data():
-    """Generates synthetic city tier data for mapping."""
+    """Generates synthetic city tier data for mapping with comprehensive list."""
     city_data = [
-        # Tier 1 Cities
-        {'City': 'Mumbai', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 19.0760, 'Lon': 72.8777},
+        # --- Tier 1 Cities ---
+        {'City': 'Ahmedabad', 'State': 'Gujarat', 'Tier': 'Tier 1', 'Lat': 23.0225, 'Lon': 72.5714},
+        {'City': 'Bengaluru', 'State': 'Karnataka', 'Tier': 'Tier 1', 'Lat': 12.9716, 'Lon': 77.5946},
+        {'City': 'Chennai', 'State': 'Tamil Nadu', 'Tier': 'Tier 1', 'Lat': 13.0827, 'Lon': 80.2707},
         {'City': 'Delhi', 'State': 'Delhi', 'Tier': 'Tier 1', 'Lat': 28.7041, 'Lon': 77.1025},
-        {'City': 'Bangalore', 'State': 'Karnataka', 'Tier': 'Tier 1', 'Lat': 12.9716, 'Lon': 77.5946},
         {'City': 'Hyderabad', 'State': 'Telangana', 'Tier': 'Tier 1', 'Lat': 17.3850, 'Lon': 78.4867},
+        {'City': 'Kolkata', 'State': 'West Bengal', 'Tier': 'Tier 1', 'Lat': 22.5726, 'Lon': 88.3639},
+        {'City': 'Mumbai', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 19.0760, 'Lon': 72.8777},
+        {'City': 'Pune', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 18.5204, 'Lon': 73.8567},
         
-        # Tier 2 Cities
+        # --- Tier 2 Cities ---
+        {'City': 'Agra', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 27.1767, 'Lon': 78.0081},
+        {'City': 'Amritsar', 'State': 'Punjab', 'Tier': 'Tier 2', 'Lat': 31.6340, 'Lon': 74.8723},
+        {'City': 'Bhopal', 'State': 'Madhya Pradesh', 'Tier': 'Tier 2', 'Lat': 23.2599, 'Lon': 77.4126},
+        {'City': 'Bhubaneswar', 'State': 'Odisha', 'Tier': 'Tier 2', 'Lat': 20.2961, 'Lon': 85.8245},
+        {'City': 'Chandigarh', 'State': 'Chandigarh', 'Tier': 'Tier 2', 'Lat': 30.7333, 'Lon': 76.7794},
+        {'City': 'Coimbatore', 'State': 'Tamil Nadu', 'Tier': 'Tier 2', 'Lat': 11.0168, 'Lon': 76.9558},
+        {'City': 'Dehradun', 'State': 'Uttarakhand', 'Tier': 'Tier 2', 'Lat': 30.3165, 'Lon': 78.0322},
+        {'City': 'Faridabad', 'State': 'Haryana', 'Tier': 'Tier 2', 'Lat': 28.4089, 'Lon': 77.3178},
+        {'City': 'Ghaziabad', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 28.6692, 'Lon': 77.4538},
+        {'City': 'Indore', 'State': 'Madhya Pradesh', 'Tier': 'Tier 2', 'Lat': 22.7196, 'Lon': 75.8577},
         {'City': 'Jaipur', 'State': 'Rajasthan', 'Tier': 'Tier 2', 'Lat': 26.9124, 'Lon': 75.7873},
+        {'City': 'Kanpur', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 26.4499, 'Lon': 80.3319},
+        {'City': 'Kochi', 'State': 'Kerala', 'Tier': 'Tier 2', 'Lat': 9.9312, 'Lon': 76.2673},
         {'City': 'Lucknow', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 26.8467, 'Lon': 80.9462},
-        {'City': 'Pune', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 18.5204, 'Lon': 73.8567},
-        {'City': 'Ahmedabad', 'State': 'Gujarat', 'Tier': 'Tier 2', 'Lat': 23.0225, 'Lon': 72.5714},
+        {'City': 'Nagpur', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 21.1458, 'Lon': 79.0882},
+        {'City': 'Nashik', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 19.9975, 'Lon': 73.7898},
+        {'City': 'Patna', 'State': 'Bihar', 'Tier': 'Tier 2', 'Lat': 25.5941, 'Lon': 85.1376},
+        {'City': 'Surat', 'State': 'Gujarat', 'Tier': 'Tier 2', 'Lat': 21.1702, 'Lon': 72.8311},
+        {'City': 'Vadodara', 'State': 'Gujarat', 'Tier': 'Tier 2', 'Lat': 22.3072, 'Lon': 73.1812},
+        {'City': 'Visakhapatnam', 'State': 'Andhra Pradesh', 'Tier': 'Tier 2', 'Lat': 17.6868, 'Lon': 83.2185},
         
-        # Tier 3 Cities (Diverse locations for spread)
-        {'City': 'Kochi', 'State': 'Kerala', 'Tier': 'Tier 3', 'Lat': 9.9312, 'Lon': 76.2673},
-        {'City': 'Chandigarh', 'State': 'Punjab/Haryana', 'Tier': 'Tier 3', 'Lat': 30.7333, 'Lon': 76.7794},
-        {'City': 'Nagpur', 'State': 'Maharashtra', 'Tier': 'Tier 3', 'Lat': 21.1458, 'Lon': 79.0882},
-        {'City': 'Indore', 'State': 'Madhya Pradesh', 'Tier': 'Tier 3', 'Lat': 22.7196, 'Lon': 75.8577}
+        # --- Tier 3 Cities ---
+        {'City': 'Bikaner', 'State': 'Rajasthan', 'Tier': 'Tier 3', 'Lat': 28.0229, 'Lon': 73.3119},
+        {'City': 'Cuttack', 'State': 'Odisha', 'Tier': 'Tier 3', 'Lat': 20.4625, 'Lon': 85.8828},
+        {'City': 'Gandhinagar', 'State': 'Gujarat', 'Tier': 'Tier 3', 'Lat': 23.2639, 'Lon': 72.6412},
+        {'City': 'Hosur', 'State': 'Tamil Nadu', 'Tier': 'Tier 3', 'Lat': 12.7483, 'Lon': 77.8208},
+        {'City': 'Jhansi', 'State': 'Uttar Pradesh', 'Tier': 'Tier 3', 'Lat': 25.4484, 'Lon': 78.5685},
+        {'City': 'Junagadh', 'State': 'Gujarat', 'Tier': 'Tier 3', 'Lat': 21.5222, 'Lon': 70.4579},
+        {'City': 'Madurai', 'State': 'Tamil Nadu', 'Tier': 'Tier 3', 'Lat': 9.9252, 'Lon': 78.1198},
+        {'City': 'Meerut', 'State': 'Uttar Pradesh', 'Tier': 'Tier 3', 'Lat': 28.9845, 'Lon': 77.7064},
+        {'City': 'Mysuru', 'State': 'Karnataka', 'Tier': 'Tier 3', 'Lat': 12.2958, 'Lon': 76.6394},
+        {'City': 'Rajkot', 'State': 'Gujarat', 'Tier': 'Tier 3', 'Lat': 22.3039, 'Lon': 70.8037},
+        {'City': 'Rajahmundry', 'State': 'Andhra Pradesh', 'Tier': 'Tier 3', 'Lat': 17.0000, 'Lon': 81.7833},
+        {'City': 'Roorkee', 'State': 'Uttarakhand', 'Tier': 'Tier 3', 'Lat': 29.8753, 'Lon': 77.8976},
+        {'City': 'Rohtak', 'State': 'Haryana', 'Tier': 'Tier 3', 'Lat': 28.8955, 'Lon': 76.6066},
+        {'City': 'Salem', 'State': 'Tamil Nadu', 'Tier': 'Tier 3', 'Lat': 11.6643, 'Lon': 78.1460},
+        {'City': 'Shimla', 'State': 'Himachal Pradesh', 'Tier': 'Tier 3', 'Lat': 31.1048, 'Lon': 77.1734},
+        {'City': 'Udaipur', 'State': 'Rajasthan', 'Tier': 'Tier 3', 'Lat': 24.5854, 'Lon': 73.7125},
+        {'City': 'Vijayawada', 'State': 'Andhra Pradesh', 'Tier': 'Tier 3', 'Lat': 16.5062, 'Lon': 80.6480},
     ]
     return pd.DataFrame(city_data)
 
@@ -150,25 +183,29 @@ st.subheader(f"Strategy Focus: **{selected_tier}**")
 
 def get_client_insight(tier):
     """Generates a dynamic explanation for client presentation."""
+    
+    # Get the list of cities for the selected tier
+    city_list = df_cities[df_cities['Tier'] == tier]['City'].tolist()
+    
     if tier == 'Tier 1':
         return f"""
         <div style='background-color: #e0f2fe; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 1']};'>
         <h4 style='color: {TIER_COLORS['Tier 1']};'>High-Value Market Strategy (Tier 1)</h4>
-        <p>This segment represents the **highest value market** with significant purchasing power, supporting premium pricing. Our focus should be on **high-margin goods** like <b>Outerwear</b> and <b>Dresses</b>. The strategy here is quality, brand visibility, and high average transaction value. **Target cities are: {', '.join(df_cities[df_cities['Tier'] == 'Tier 1']['City'].tolist())}.**</p>
+        <p>This segment represents the **highest value market** with significant purchasing power, supporting premium pricing. Our focus should be on **high-margin goods** like <b>Outerwear</b> and <b>Dresses</b>. The strategy here is quality, brand visibility, and high average transaction value. **Target cities are: {', '.join(city_list)}.**</p>
         </div>
         """
     elif tier == 'Tier 2':
         return f"""
         <div style='background-color: #ecfdf5; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 2']};'>
         <h4 style='color: {TIER_COLORS['Tier 2']};'>Balanced Growth Strategy (Tier 2)</h4>
-        <p>Tier 2 offers a strong balance of volume and value. While the average price is moderate, there is significant growth potential across categories like <b>Jeans</b> and <b>Outerwear</b>. We recommend a **mixed pricing strategy** focusing on perceived value and promotions to build loyalty. **Target cities are: {', '.join(df_cities[df_cities['Tier'] == 'Tier 2']['City'].tolist())}.**</p>
+        <p>Tier 2 offers a strong balance of volume and value. While the average price is moderate, there is significant growth potential across categories like <b>Jeans</b> and <b>Outerwear</b>. We recommend a **mixed pricing strategy** focusing on perceived value and promotions to build loyalty. **Target cities are: {', '.join(city_list)}.**</p>
         </div>
         """
     else:
         return f"""
         <div style='background-color: #fffbeb; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 3']};'>
         <h4 style='color: {TIER_COLORS['Tier 3']};'>Volume & Accessibility Strategy (Tier 3)</h4>
-        <p>This segment is **highly price-sensitive** but offers the largest potential for volume sales. The dominant product is <b>T-Shirts</b>. Our strategy must be **cost-leadership**, focusing on essential, affordable apparel and optimizing logistics for wider reach. **Target cities are: {', '.join(df_cities[df_cities['Tier'] == 'Tier 3']['City'].tolist())}.**</p>
+        <p>This segment is **highly price-sensitive** but offers the largest potential for volume sales. The dominant product is <b>T-Shirts</b>. Our strategy must be **cost-leadership**, focusing on essential, affordable apparel and optimizing logistics for wider reach. **Target cities are: {', '.join(city_list)}.**</p>
         </div>
         """
 
