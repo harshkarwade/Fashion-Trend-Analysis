@@ -1,4 +1,5 @@
 # Fashion Trend Analysis
+This interactive geo-strategic analysis segments the market by Tier 1, 2, and 3 Indian cities to define the optimal pricing, product mix, and discount strategy for each target audience segment.
 The uploaded Jupyter Notebook provides the foundational product analysis, which is then leveraged by the Streamlit application to perform advanced, strategic target audience segmentation across key business dimensions:
 
 1. Foundational Analysis (From Jupyter Notebook)
