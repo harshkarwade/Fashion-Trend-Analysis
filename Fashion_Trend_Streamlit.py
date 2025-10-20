@@ -183,22 +183,29 @@ df_filtered_cities = df_cities[df_cities['Tier'] == selected_tier].copy()
 
 # Map chart using Plotly Express
 fig_map = px.scatter_mapbox(
-    df_filtered_cities, # <-- NOW USES ONLY THE FILTERED DATA
+    df_filtered_cities, # <-- USES ONLY THE FILTERED DATA
     lat="Lat",
     lon="Lon",
     hover_name="City",
     hover_data={"State": True, "Tier": True, "Lat": False, "Lon": False},
     color="Tier",
     size_max=25,
-    zoom=3.5,  # Center the map over India
-    center={"lat": 23.5, "lon": 78}, # Approximate center of India
+    zoom=4.2,  # Tighter zoom to focus only on India
+    center={"lat": 22.0, "lon": 78}, # Adjusted center for India
     title=f"Geographic Focus: {selected_tier} Cities",
     color_discrete_map=TIER_COLORS,
 )
 
-# Set map style to a standard public tile set (Open Street Map)
-fig_map.update_layout(mapbox_style="open-street-map")
-fig_map.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
+# Set map style and boundary limits for a tighter India view
+fig_map.update_layout(
+    mapbox=dict(
+        style="open-street-map",
+        # Use the same zoom and center for the mapbox config to maintain focus
+        center={"lat": 22.0, "lon": 78},
+        zoom=4.2
+    ),
+    margin={"r":0,"t":40,"l":0,"b":0}
+)
 
 st.plotly_chart(fig_map, use_container_width=True)
 
