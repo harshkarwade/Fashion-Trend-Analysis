@@ -384,7 +384,7 @@ with chart_col3:
     fig_bar.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
     st.plotly_chart(fig_bar, use_container_width=True)
 
-# Chart 4: Product Mix (or Single Category View) for Selected Tier
+# Chart 4: Product Mix (or Single Category View) for Selected Tier - MODIFIED FOR BETTER REPRESENTATION
 with chart_col4:
     if category_filter == 'All Categories':
         st.subheader(f"Product Mix: {selected_tier}")
@@ -400,20 +400,41 @@ with chart_col4:
         fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
         st.plotly_chart(fig_pie, use_container_width=True)
     else:
-        st.subheader(f"Category Sales vs. Avg Price: {category_filter}")
-        # When a single category is selected, show a small table of its data
-        df_cat_data = df_selected_tier[['Category', 'Avg_Price', 'Sales', 'Discount_Pct']].head(1)
-        st.dataframe(
-            df_cat_data.rename(columns={'Avg_Price': 'Avg. Price', 'Discount_Pct': 'Avg. Discount %'}).set_index('Category'),
-            column_config={
-                "Avg. Price": st.column_config.NumberColumn(format="$%.2f"),
-                "Sales": st.column_config.NumberColumn(format="$%d"),
-                "Avg. Discount %": st.column_config.NumberColumn(format="%.1f%%"),
-            },
-            hide_index=False,
-            use_container_width=True
+        # NEW REPRESENTATION: Compare the selected category's price across ALL tiers
+        st.subheader(f"Strategic Pricing: {category_filter} Across Tiers")
+        
+        # Filter the full data only by the selected category
+        df_price_comp = df_sales[df_sales['Category'] == category_filter].copy()
+        
+        # Calculate the weighted average price and total sales for the selected category across ALL tiers
+        df_price_agg = df_price_comp.groupby('Tier').agg(
+            TotalSales=('Sales', 'sum'),
+            TotalCount=('Count', 'sum')
+        ).reset_index()
+        df_price_agg['Avg_Price'] = df_price_agg['TotalSales'] / df_price_agg['TotalCount']
+        
+        # Bar chart comparing average price across tiers
+        fig_price_comp = px.bar(
+            df_price_agg,
+            x='Tier',
+            y='Avg_Price',
+            color='Tier',
+            title=f"Avg. Price for {category_filter} by City Tier",
+            labels={'Avg_Price': 'Average Price ($)'},
+            color_discrete_map=TIER_COLORS
         )
-        st.info(f"The total sales for **{category_filter}** in **{selected_tier}** is **${total_sales:,.0f}** at a weighted average price of **${avg_price_weighted:,.2f}**.")
+
+        # Highlight the currently selected tier
+        fig_price_comp.update_traces(
+            marker_line_color='black', 
+            marker_line_width=3, 
+            selector=dict(name=selected_tier)
+        )
+        
+        fig_price_comp.update_layout(showlegend=False, yaxis_tickprefix="$")
+        fig_price_comp.update_traces(texttemplate='$%{y:,.2f}', textposition='outside')
+        st.plotly_chart(fig_price_comp, use_container_width=True)
+        st.info(f"This chart shows the ideal price point for **{category_filter}** changes significantly based on the target city.")
 
 
 st.caption("Sales and City Tier data are synthetic for demonstration purposes.")
