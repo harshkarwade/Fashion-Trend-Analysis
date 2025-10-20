@@ -172,10 +172,12 @@ st.markdown("---")
 
 # --- 3. Sidebar (Filters) ---
 st.sidebar.header("🎯 Target Audience Filters")
-selected_tier = st.sidebar.selectbox(
-    "1. Select a City Tier:",
+
+# CHANGED: Use multiselect for Tier selection
+selected_tiers = st.sidebar.multiselect(
+    "1. Select City Tiers:",
     options=['Tier 1', 'Tier 2', 'Tier 3'],
-    index=0
+    default=['Tier 1', 'Tier 2', 'Tier 3'] # Default to all tiers selected
 )
 
 # New Category Filter
@@ -194,8 +196,9 @@ gender_filter = st.sidebar.selectbox(
 
 # --- 4. Data Filtering and KPI Calculation ---
 
-# Filter data based on selected tier, category, AND gender
-df_selected_tier = df_sales[df_sales['Tier'] == selected_tier].copy()
+# Filter data based on selected tiers, category, AND gender
+# MAJOR CHANGE: Filter by the list of selected tiers
+df_selected_tier = df_sales[df_sales['Tier'].isin(selected_tiers)].copy()
 
 if category_filter != 'All Categories':
     df_selected_tier = df_selected_tier[df_selected_tier['Category'] == category_filter].copy()
@@ -207,13 +210,14 @@ if gender_filter != 'All Genders':
 total_sales = df_selected_tier['Sales'].sum() if not df_selected_tier.empty else 0
 total_count = df_selected_tier['Count'].sum() if not df_selected_tier.empty else 0
 avg_price_weighted = total_sales / total_count if total_count > 0 else 0
-avg_discount = df_selected_tier['Discount_Pct'].mean() if not df_selected_tier.empty else 0
 # Weighted Average Discount
 weighted_avg_discount = (df_selected_tier['Discount_Pct'] * df_selected_tier['Sales']).sum() / total_sales if total_sales > 0 else 0
 
 
 # --- 5. KPI Metrics (Top Row) ---
-filter_title = f"{selected_tier}"
+# Dynamic filter title reflects all selections
+tier_label = ', '.join(selected_tiers) if len(selected_tiers) < 3 else "All Tiers"
+filter_title = f"{tier_label}"
 if category_filter != 'All Categories':
     filter_title += f" ({category_filter})"
 if gender_filter != 'All Genders':
@@ -263,44 +267,50 @@ st.markdown("---")
 
 # --- 6. Dynamic Client Explanation/Takeaway ---
 st.header("Client Presentation Summary")
-st.subheader(f"Strategic Focus: **{selected_tier}**")
 
-def get_client_insight(tier, category, gender, discount):
+def get_client_insight(tiers, category, gender, discount):
     """Generates a dynamic explanation for client presentation."""
-    city_list = df_cities[df_cities['Tier'] == tier]['City'].tolist()
+    tier_summary = ', '.join(tiers)
     
-    cat_text = f"focusing on **{category}**" if category != 'All Categories' else "covering all categories"
-    gender_text = f"targeting the **{gender}** audience" if gender != 'All Genders' else "across all genders"
-    discount_text = f"The average discount is **{discount:,.1f}%**"
-    
-    if tier == 'Tier 1':
-        title = "Premium Market Strategy (Tier 1)"
-        insight = f"This segment supports premium pricing (Avg. Price: ${avg_price_weighted:,.2f}). {gender_text.capitalize()}, {cat_text}, the strategy must emphasize brand value and exclusivity. {discount_text}, suggesting lower price sensitivity. **Target cities are: {', '.join(city_list)}.**"
-        color = TIER_COLORS['Tier 1']
-    elif tier == 'Tier 2':
-        title = "Balanced Growth Strategy (Tier 2)"
-        insight = f"Tier 2 offers a strong balance of volume and value. {gender_text.capitalize()}, {cat_text}, a mixed pricing approach is best, focusing on perceived value and promotions. {discount_text}, indicating customers respond well to moderate deals. **Target cities are: {', '.join(city_list)}.**"
-        color = TIER_COLORS['Tier 2']
+    if len(tiers) == 3:
+        summary_title = "Holistic Strategy (All Tiers)"
+        summary_color = "#374151" # Gray/Neutral
+        
+        # Calculate overall weighted average price
+        overall_avg_price = df_sales['Sales'].sum() / df_sales['Count'].sum()
+        
+        insight = f"This view provides the **National Aggregate** across all market types. The combined weighted average price is **${overall_avg_price:,.2f}**, indicating the overall market sweet spot. Successful strategy requires tailored execution (use filters to drill down), but the national average discount of **{discount:,.1f}%** sets a benchmark for promotional spend."
     else:
-        title = "Volume & Accessibility Strategy (Tier 3)"
-        insight = f"This segment is highly price-sensitive, driven by volume sales. {gender_text.capitalize()}, {cat_text}, the strategy must be cost-leadership and affordability. {discount_text}, confirming the need for aggressive pricing to capture market share. **Target cities are: {', '.join(city_list)}.**"
-        color = TIER_COLORS['Tier 3']
-
+        # Use the logic for specific tier selections (remains mostly the same)
+        tier = tiers[0] if len(tiers) == 1 else "Mixed Tiers"
+        
+        cat_text = f"focusing on **{category}**" if category != 'All Categories' else "covering all categories"
+        gender_text = f"targeting the **{gender}** audience" if gender != 'All Genders' else "across all genders"
+        
+        if len(tiers) == 1:
+            summary_title = f"Targeted Strategy ({tier})"
+            summary_color = TIER_COLORS.get(tier, '#374151')
+            insight = f"This single-tier focus (Avg. Price: ${avg_price_weighted:,.2f}) allows for deep specialization. {gender_text.capitalize()}, {cat_text}, the strategy must emphasize unique value propositions tailored to the '{tier}' customer profile. Discounting at **{discount:,.1f}%** is specific to this segment."
+        else: # Mixed Tiers (e.g., Tier 1 and Tier 2)
+            summary_title = f"Regional/Hybrid Strategy ({tier_summary})"
+            summary_color = "#9333EA" # Purple
+            insight = f"This mixed-tier analysis combines premium and growth markets. The aggregated strategy (Avg. Price: ${avg_price_weighted:,.2f}) requires a **fluid pricing structure** to manage the disparate price sensitivities of the included segments. The average discount of **{discount:,.1f}%** must be carefully managed to avoid margin erosion in the higher-tier cities."
+            
     return f"""
-        <div style='background-color: {color}1A; padding: 15px; border-radius: 10px; border-left: 5px solid {color};'>
-        <h4 style='color: {color};'>{title}</h4>
+        <div style='background-color: {summary_color}1A; padding: 15px; border-radius: 10px; border-left: 5px solid {summary_color};'>
+        <h4 style='color: {summary_color};'>{summary_title}</h4>
         <p>{insight}</p>
         </div>
     """
 
-st.markdown(get_client_insight(selected_tier, category_filter, gender_filter, weighted_avg_discount), unsafe_allow_html=True)
+st.markdown(get_client_insight(selected_tiers, category_filter, gender_filter, weighted_avg_discount), unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 7. Geographic Visualization (Map) ---
 st.header("🇮🇳 Market Distribution: City Tier Map")
 
-# Filter the city data based on the selected tier
-df_filtered_cities = df_cities[df_cities['Tier'] == selected_tier].copy()
+# Filter the city data based on the selected tiers
+df_filtered_cities = df_cities[df_cities['Tier'].isin(selected_tiers)].copy()
 
 # Map chart using Plotly Express
 fig_map = px.scatter_mapbox(
@@ -313,7 +323,7 @@ fig_map = px.scatter_mapbox(
     size_max=25,
     zoom=4.2,
     center={"lat": 22.0, "lon": 78},
-    title=f"Geographic Focus: {selected_tier} Cities",
+    title=f"Geographic Focus: {', '.join(selected_tiers)} Cities",
     color_discrete_map=TIER_COLORS,
 )
 
@@ -336,15 +346,15 @@ st.header("Detailed Performance Analysis")
 chart_col1, chart_col2 = st.columns(2)
 chart_col3, chart_col4 = st.columns(2)
 
+# Check if data frame is empty after all filters
+if df_selected_tier.empty:
+    st.error("No sales data available for the selected combination of Tiers, Category, and Gender.")
 
-# Chart 1: Price Segment Breakdown (Low/Mid/Premium/Luxury)
-with chart_col1:
-    st.subheader(f"Price Segment Breakdown in {filter_title}")
-    if df_selected_tier.empty:
-        st.warning("No data for this combination.")
-    else:
+else:
+    # Chart 1: Price Segment Breakdown (Low/Mid/Premium/Luxury)
+    with chart_col1:
+        st.subheader(f"Price Segment Breakdown in {filter_title}")
         df_price_seg = df_selected_tier.groupby('Price_Segment')['Sales'].sum().reset_index()
-        # Define order for price segments
         segment_order = ['Low-End', 'Mid-Range', 'Premium', 'Luxury']
         df_price_seg['Price_Segment'] = pd.Categorical(df_price_seg['Price_Segment'], categories=segment_order, ordered=True)
         df_price_seg = df_price_seg.sort_values('Price_Segment')
@@ -362,17 +372,12 @@ with chart_col1:
         fig_seg.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_seg, use_container_width=True)
 
-# Chart 2: Discount Rate Distribution (Price Sensitivity)
-with chart_col2:
-    st.subheader(f"Discount Rate Distribution in {filter_title}")
-    if df_selected_tier.empty:
-        st.warning("No data for this combination.")
-    else:
-        # Create bins for discount percentage
+    # Chart 2: Discount Rate Distribution (Price Sensitivity)
+    with chart_col2:
+        st.subheader(f"Discount Rate Distribution in {filter_title}")
         bins = [0, 10, 20, 30, 40, 50, 100]
         labels = ['0-10%', '10-20%', '20-30%', '30-40%', '40-50%', '50%+']
         
-        # We use a copy for safer assignment
         df_temp = df_selected_tier.copy()
         df_temp['Discount_Group'] = pd.cut(df_temp['Discount_Pct'], bins=bins, labels=labels, right=False)
         
@@ -391,83 +396,97 @@ with chart_col2:
         fig_disc.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_disc, use_container_width=True)
 
-# Chart 3: NEW CHART - Gender Sales Split for Filtered View
-with chart_col3:
-    st.subheader(f"Sales Split by Gender in {filter_title}")
-    
-    if df_selected_tier.empty:
-        st.warning("No data for this combination.")
-    elif gender_filter != 'All Genders':
-        # If a single gender is selected, show a simple bar/text stating the total sales
-        st.info(f"The filter is set to **{gender_filter}**. Total Sales: **${total_sales:,.0f}**")
-        st.dataframe(df_selected_tier.groupby('Gender')['Sales'].sum().reset_index().rename(columns={'Sales': 'Total Sales'}), hide_index=True, use_container_width=True)
-    else:
-        # Show the gender split pie chart
-        df_gender_mix = df_selected_tier.groupby('Gender')['Sales'].sum().reset_index()
-        fig_gender_pie = px.pie(
-            df_gender_mix,
-            values='Sales',
-            names='Gender',
-            title="Gender Revenue Distribution",
-            hole=.5,
-            color_discrete_sequence=px.colors.qualitative.Pastel
-        )
-        fig_gender_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
-        st.plotly_chart(fig_gender_pie, use_container_width=True)
+    # Chart 3: Gender Sales Split (If 'All Genders' is selected) or Tier Split (if multiple tiers selected)
+    with chart_col3:
+        if gender_filter == 'All Genders' and len(selected_tiers) < 3:
+            st.subheader(f"Sales Split by Gender in {filter_title}")
+            df_gender_mix = df_selected_tier.groupby('Gender')['Sales'].sum().reset_index()
+            fig_gender_pie = px.pie(
+                df_gender_mix,
+                values='Sales',
+                names='Gender',
+                title="Gender Revenue Distribution",
+                hole=.5,
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_gender_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
+            st.plotly_chart(fig_gender_pie, use_container_width=True)
 
-# Chart 4: Product Mix (or Single Category Price Comparison)
-with chart_col4:
-    if category_filter == 'All Categories':
-        st.subheader(f"Product Mix: {selected_tier}")
-        df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
-        fig_pie = px.pie(
-            df_category_mix,
-            values='Sales',
-            names='Category',
-            title=f"Category Revenue Distribution in {selected_tier}",
-            hole=.5, 
-            color_discrete_sequence=px.colors.sequential.Plasma_r
-        )
-        fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
-        st.plotly_chart(fig_pie, use_container_width=True)
-    else:
-        # Compare the selected category's average price across ALL tiers
-        st.subheader(f"Strategic Pricing: {category_filter} Avg. Price Across Tiers")
+        elif len(selected_tiers) > 1:
+            st.subheader(f"Tier Sales Contribution to {filter_title}")
+            df_tier_split = df_selected_tier.groupby('Tier')['Sales'].sum().reset_index()
+            fig_tier_split = px.pie(
+                df_tier_split,
+                values='Sales',
+                names='Tier',
+                title="Sales Contribution by Tier",
+                hole=.5,
+                color_discrete_map=TIER_COLORS
+            )
+            fig_tier_split.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
+            st.plotly_chart(fig_tier_split, use_container_width=True)
         
-        # Filter the full data only by the selected category and gender
-        df_price_comp = df_sales[df_sales['Category'] == category_filter].copy()
-        if gender_filter != 'All Genders':
-            df_price_comp = df_price_comp[df_price_comp['Gender'] == gender_filter].copy()
+        else:
+             st.info(f"The filter is set to **{selected_tiers[0]}** and **{gender_filter}**. Total Sales: **${total_sales:,.0f}**")
 
-        # Calculate the weighted average price and total sales for the selected category across ALL tiers
-        df_price_agg = df_price_comp.groupby('Tier').agg(
-            TotalSales=('Sales', 'sum'),
-            TotalCount=('Count', 'sum')
-        ).reset_index()
-        df_price_agg['Avg_Price'] = df_price_agg['TotalSales'] / df_price_agg['TotalCount']
-        
-        # Bar chart comparing average price across tiers
-        fig_price_comp = px.bar(
-            df_price_agg,
-            x='Tier',
-            y='Avg_Price',
-            color='Tier',
-            title=f"Avg. Price for {category_filter} by City Tier",
-            labels={'Avg_Price': 'Average Price ($)'},
-            color_discrete_map=TIER_COLORS
-        )
 
-        # Highlight the currently selected tier
-        fig_price_comp.update_traces(
-            marker_line_color='black', 
-            marker_line_width=3, 
-            selector=dict(name=selected_tier)
-        )
-        
-        fig_price_comp.update_layout(showlegend=False, yaxis_tickprefix="$")
-        fig_price_comp.update_traces(texttemplate='$%{y:,.2f}', textposition='outside')
-        st.plotly_chart(fig_price_comp, use_container_width=True)
-        st.info(f"This chart shows the ideal price point for **{category_filter}** changes significantly based on the target city.")
+    # Chart 4: Product Mix (or Single Category Price Comparison)
+    with chart_col4:
+        if category_filter == 'All Categories':
+            st.subheader(f"Product Mix: {filter_title}")
+            df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
+            fig_pie = px.pie(
+                df_category_mix,
+                values='Sales',
+                names='Category',
+                title=f"Category Revenue Distribution in {filter_title}",
+                hole=.5, 
+                color_discrete_sequence=px.colors.sequential.Plasma_r
+            )
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
+            st.plotly_chart(fig_pie, use_container_width=True)
+        else:
+            # Compare the selected category's average price across ALL selected tiers
+            st.subheader(f"Strategic Pricing: {category_filter} Avg. Price Across Selected Tiers")
+            
+            # Filter the full data only by the selected category and gender
+            df_price_comp = df_sales[
+                (df_sales['Category'] == category_filter) &
+                (df_sales['Tier'].isin(selected_tiers))
+            ].copy()
+            if gender_filter != 'All Genders':
+                df_price_comp = df_price_comp[df_price_comp['Gender'] == gender_filter].copy()
+
+            # Calculate the weighted average price and total sales for the selected category across ALL tiers
+            df_price_agg = df_price_comp.groupby('Tier').agg(
+                TotalSales=('Sales', 'sum'),
+                TotalCount=('Count', 'sum')
+            ).reset_index()
+            df_price_agg['Avg_Price'] = df_price_agg['TotalSales'] / df_price_agg['TotalCount']
+            
+            # Bar chart comparing average price across tiers
+            fig_price_comp = px.bar(
+                df_price_agg,
+                x='Tier',
+                y='Avg_Price',
+                color='Tier',
+                title=f"Avg. Price for {category_filter} by City Tier",
+                labels={'Avg_Price': 'Average Price ($)'},
+                color_discrete_map=TIER_COLORS
+            )
+            
+            # Highlight the tiers that are currently selected in the multi-select box
+            for tier in selected_tiers:
+                fig_price_comp.update_traces(
+                    marker_line_color='black', 
+                    marker_line_width=3, 
+                    selector=dict(name=tier)
+                )
+            
+            fig_price_comp.update_layout(showlegend=False, yaxis_tickprefix="$")
+            fig_price_comp.update_traces(texttemplate='$%{y:,.2f}', textposition='outside')
+            st.plotly_chart(fig_price_comp, use_container_width=True)
+            st.info(f"This chart compares the price points for **{category_filter}** across the **{', '.join(selected_tiers)}** audience segments.")
 
 
 st.caption("Sales and City Tier data are synthetic for demonstration purposes.")
