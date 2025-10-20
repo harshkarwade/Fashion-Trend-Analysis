@@ -1,5 +1,5 @@
 # Fashion Trend Analysis
-The uploaded Jupyter Notebook (Fashion_Trend_Analysis (3).ipynb) provides the foundational product analysis, which is then leveraged by the Streamlit application to perform advanced, strategic target audience segmentation across key business dimensions:
+The uploaded Jupyter Notebook provides the foundational product analysis, which is then leveraged by the Streamlit application to perform advanced, strategic target audience segmentation across key business dimensions:
 
 1. Foundational Analysis (From Jupyter Notebook)
 Initial Data Review: Confirmed data types and structure using df.info() and df.describe(), ensuring the dataset is clean and ready for analysis.
