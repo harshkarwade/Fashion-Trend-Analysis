@@ -12,24 +12,24 @@ st.set_page_config(
 
 # Define consistent colors for the tiers
 TIER_COLORS = {
-    'Tier 1': '#4F46E5', # Indigo
-    'Tier 2': '#10B981', # Emerald
-    'Tier 3': '#F59E0B'  # Amber
+    'Tier 1': '#4F46E5', # Indigo (High Value)
+    'Tier 2': '#10B981', # Emerald (Balanced Growth)
+    'Tier 3': '#F59E0B'  # Amber (Volume/Affordable)
 }
 
 # --- 1. Mock Data Generation Functions ---
 # Generate synthetic sales data
 @st.cache_data
 def generate_sales_data():
-    """Generates a synthetic dataset for fashion sales segmented by city tier."""
+    """Generates a synthetic dataset for fashion sales segmented by city tier, price, and discount."""
     np.random.seed(42)  # for reproducibility
     tiers = ['Tier 1', 'Tier 2', 'Tier 3']
     categories = [
-        {'name': 'Dresses', 'T1_ratio': 0.25, 'T2_ratio': 0.15, 'T3_ratio': 0.10, 'price': 85},
-        {'name': 'T-Shirts', 'T1_ratio': 0.10, 'T2_ratio': 0.30, 'T3_ratio': 0.40, 'price': 25},
-        {'name': 'Jeans', 'T1_ratio': 0.20, 'T2_ratio': 0.20, 'T3_ratio': 0.15, 'price': 60},
-        {'name': 'Accessories', 'T1_ratio': 0.15, 'T2_ratio': 0.10, 'T3_ratio': 0.10, 'price': 30},
-        {'name': 'Outerwear', 'T1_ratio': 0.30, 'T2_ratio': 0.25, 'T3_ratio': 0.25, 'price': 120}
+        {'name': 'Dresses', 'T1_ratio': 0.25, 'T2_ratio': 0.15, 'T3_ratio': 0.10, 'base_price': 85},
+        {'name': 'T-Shirts', 'T1_ratio': 0.10, 'T2_ratio': 0.30, 'T3_ratio': 0.40, 'base_price': 25},
+        {'name': 'Jeans', 'T1_ratio': 0.20, 'T2_ratio': 0.20, 'T3_ratio': 0.15, 'base_price': 60},
+        {'name': 'Accessories', 'T1_ratio': 0.15, 'T2_ratio': 0.10, 'T3_ratio': 0.10, 'base_price': 30},
+        {'name': 'Outerwear', 'T1_ratio': 0.30, 'T2_ratio': 0.25, 'T3_ratio': 0.25, 'base_price': 120}
     ]
     base_sales = {
         'Tier 1': 350000,
@@ -42,16 +42,38 @@ def generate_sales_data():
         tier_num = tier.split(' ')[1] 
         for cat in categories:
             sales_ratio = cat[f'T{tier_num}_ratio']
+            
+            # --- Sales & Price Simulation ---
             sales = base_sales[tier] * sales_ratio * (1 + (np.random.rand() - 0.5) * 0.2)
-            avg_price = cat['price'] * (1 + (np.random.rand() - 0.5) * 0.1)
-            count = sales / avg_price 
+            avg_price_unadjusted = cat['base_price'] * (1 + (np.random.rand() - 0.5) * 0.1)
+            count = sales / avg_price_unadjusted # Rough count calculation
+            
+            # --- Discount Simulation (Tier dependent) ---
+            if tier == 'Tier 1':
+                discount = np.random.uniform(0.05, 0.20) # Lower discount
+            elif tier == 'Tier 2':
+                discount = np.random.uniform(0.15, 0.30) # Moderate discount
+            else: # Tier 3
+                discount = np.random.uniform(0.25, 0.45) # Higher discount
+
+            # --- Price Segmentation ---
+            if cat['base_price'] > 100:
+                price_segment = 'Luxury'
+            elif cat['base_price'] > 70:
+                price_segment = 'Premium'
+            elif cat['base_price'] > 40:
+                price_segment = 'Mid-Range'
+            else:
+                price_segment = 'Low-End'
             
             data.append({
                 'Tier': tier,
                 'Category': cat['name'],
                 'Sales': sales,
                 'Count': count,
-                'Avg_Price': avg_price
+                'Avg_Price': avg_price_unadjusted,
+                'Discount_Pct': discount * 100,
+                'Price_Segment': price_segment
             })
 
     return pd.DataFrame(data)
@@ -119,12 +141,12 @@ df_sales = generate_sales_data()
 df_cities = generate_city_tier_data()
 
 # --- 2. Dashboard Title and Description ---
-st.title("🛍️ Fashion Market Segmentation & Strategy Dashboard")
-st.markdown("Analyze **Sales Value**, **Product Mix**, and **Geographic Distribution** across **City Tiers** to strategically choose your market and pricing strategy.")
+st.title("🛍️ Fashion Market Segmentation & Strategic Dashboard")
+st.markdown("Analyze **Sales Value**, **Pricing Strategy**, and **Discount Effectiveness** across **City Tiers** and **Product Categories**.")
 st.markdown("---")
 
-# --- 3. Sidebar (Tier Selector) and Category Filter ---
-st.sidebar.header("🎯 Target Audience Filter")
+# --- 3. Sidebar (Filters) ---
+st.sidebar.header("🎯 Target Audience Filters")
 selected_tier = st.sidebar.selectbox(
     "1. Select a City Tier:",
     options=['Tier 1', 'Tier 2', 'Tier 3'],
@@ -140,7 +162,7 @@ category_filter = st.sidebar.selectbox(
 
 # --- 4. Data Filtering and KPI Calculation ---
 
-# Aggregate Total Tier Sales (for Chart 1: Sales Contribution)
+# Aggregate Total Tier Sales (for Chart 1: Sales Contribution - NOT filtered by Category)
 df_tier_agg = df_sales.groupby('Tier').agg(
     TotalSales=('Sales', 'sum'),
     TotalCount=('Count', 'sum')
@@ -158,16 +180,10 @@ if category_filter != 'All Categories':
 total_sales = df_selected_tier['Sales'].sum() if not df_selected_tier.empty else 0
 total_count = df_selected_tier['Count'].sum() if not df_selected_tier.empty else 0
 avg_price_weighted = total_sales / total_count if total_count > 0 else 0
+avg_discount = df_selected_tier['Discount_Pct'].mean() if not df_selected_tier.empty else 0
+# Weighted Average Discount
+weighted_avg_discount = (df_selected_tier['Discount_Pct'] * df_selected_tier['Sales']).sum() / total_sales if total_sales > 0 else 0
 
-if category_filter == 'All Categories':
-    # Find the top category only if 'All Categories' is selected
-    top_category = df_selected_tier.groupby('Category')['Sales'].sum().idxmax() if not df_selected_tier.empty else 'N/A'
-    category_label = "Most Popular Category (By Sales)"
-    category_value = top_category
-else:
-    # If a category is selected, just show the selected category name
-    category_label = "Selected Product Category"
-    category_value = category_filter
 
 # --- 5. KPI Metrics (Top Row) ---
 filter_title = f"{selected_tier}"
@@ -175,7 +191,7 @@ if category_filter != 'All Categories':
     filter_title += f" ({category_filter} Focus)"
 
 st.header(f"Key Metrics for {filter_title}")
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(
@@ -193,34 +209,51 @@ with col2:
 
 with col3:
     st.metric(
-        label=category_label,
-        value=category_value,
-        help="The dominant product if viewing all categories, or the currently filtered category."
+        label="Avg. Discount Rate",
+        value=f"{weighted_avg_discount:,.1f}%",
+        help="The sales-weighted average discount applied in this segment."
     )
+
+with col4:
+    if category_filter == 'All Categories':
+        # Find the dominant price segment
+        dominant_segment = df_selected_tier.groupby('Price_Segment')['Sales'].sum().idxmax() if not df_selected_tier.empty else 'N/A'
+        st.metric(
+            label="Dominant Price Segment",
+            value=dominant_segment,
+            help="The price segment (Luxury, Premium, Mid-Range, Low-End) generating the most sales."
+        )
+    else:
+         st.metric(
+            label="Selected Category",
+            value=category_filter,
+            help="The category currently being analyzed."
+        )
 
 st.markdown("---")
 
 # --- 6. Dynamic Client Explanation/Takeaway ---
 st.header("Client Presentation Summary")
-st.subheader(f"Strategy Focus: **{selected_tier}**")
+st.subheader(f"Strategic Focus: **{selected_tier}**")
 
-def get_client_insight(tier, category):
+def get_client_insight(tier, category, discount):
     """Generates a dynamic explanation for client presentation."""
     city_list = df_cities[df_cities['Tier'] == tier]['City'].tolist()
     
     cat_text = f"focusing only on **{category}**" if category != 'All Categories' else "covering all product categories"
-
+    discount_text = f"The average discount is **{discount:,.1f}%**"
+    
     if tier == 'Tier 1':
-        title = "High-Value Market Strategy (Tier 1)"
-        insight = f"This segment supports premium pricing. {cat_text.capitalize()}, the strategy here is to emphasize quality, brand visibility, and high average transaction value. **Target cities are: {', '.join(city_list)}.**"
+        title = "Premium Market Strategy (Tier 1)"
+        insight = f"This segment supports premium pricing (Avg. Price: ${avg_price_weighted:,.2f}). {cat_text.capitalize()}, the strategy must emphasize brand value and exclusivity. {discount_text}, suggesting lower price sensitivity. **Target cities are: {', '.join(city_list)}.**"
         color = TIER_COLORS['Tier 1']
     elif tier == 'Tier 2':
         title = "Balanced Growth Strategy (Tier 2)"
-        insight = f"Tier 2 offers a strong balance of volume and value. {cat_text.capitalize()}, we recommend a mixed pricing strategy focusing on perceived value and promotions to build loyalty. **Target cities are: {', '.join(city_list)}.**"
+        insight = f"Tier 2 offers a strong balance of volume and value. {cat_text.capitalize()}, a mixed pricing approach is best, focusing on perceived value and promotions. {discount_text}, indicating customers respond well to moderate deals. **Target cities are: {', '.join(city_list)}.**"
         color = TIER_COLORS['Tier 2']
     else:
         title = "Volume & Accessibility Strategy (Tier 3)"
-        insight = f"This segment is highly price-sensitive but offers the largest potential for volume sales. {cat_text.capitalize()}, our strategy must be cost-leadership, focusing on essential, affordable apparel. **Target cities are: {', '.join(city_list)}.**"
+        insight = f"This segment is highly price-sensitive, driven by volume sales. {cat_text.capitalize()}, the strategy must be cost-leadership and affordability. {discount_text}, confirming the need for aggressive pricing to capture market share. **Target cities are: {', '.join(city_list)}.**"
         color = TIER_COLORS['Tier 3']
 
     return f"""
@@ -230,7 +263,7 @@ def get_client_insight(tier, category):
         </div>
     """
 
-st.markdown(get_client_insight(selected_tier, category_filter), unsafe_allow_html=True)
+st.markdown(get_client_insight(selected_tier, category_filter, weighted_avg_discount), unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 7. Geographic Visualization (Map) ---
@@ -241,7 +274,7 @@ df_filtered_cities = df_cities[df_cities['Tier'] == selected_tier].copy()
 
 # Map chart using Plotly Express
 fig_map = px.scatter_mapbox(
-    df_filtered_cities, # <-- USES ONLY THE FILTERED DATA
+    df_filtered_cities, 
     lat="Lat",
     lon="Lon",
     hover_name="City",
@@ -258,7 +291,6 @@ fig_map = px.scatter_mapbox(
 fig_map.update_layout(
     mapbox=dict(
         style="open-street-map",
-        # Use the same zoom and center for the mapbox config to maintain focus
         center={"lat": 22.0, "lon": 78},
         zoom=4.2
     ),
@@ -269,12 +301,69 @@ st.plotly_chart(fig_map, use_container_width=True)
 
 st.markdown("---")
 
-# --- 8. Core Visualizations (Bottom Row) ---
+# --- 8. Core Visualizations (Bottom Row - Dynamic) ---
+st.header("Detailed Performance Analysis")
 chart_col1, chart_col2 = st.columns(2)
+chart_col3, chart_col4 = st.columns(2)
 
-# Chart 1: Sales Contribution by City Tier (Bar Chart)
+
+# Chart 1: Price Segment Breakdown (Low/Mid/Premium/Luxury)
 with chart_col1:
-    st.subheader("Market Potential: Sales Contribution by Tier")
+    st.subheader(f"Price Segment Breakdown in {filter_title}")
+    if df_selected_tier.empty:
+        st.warning("No data for this combination.")
+    else:
+        df_price_seg = df_selected_tier.groupby('Price_Segment')['Sales'].sum().reset_index()
+        # Define order for price segments
+        segment_order = ['Low-End', 'Mid-Range', 'Premium', 'Luxury']
+        df_price_seg['Price_Segment'] = pd.Categorical(df_price_seg['Price_Segment'], categories=segment_order, ordered=True)
+        df_price_seg = df_price_seg.sort_values('Price_Segment')
+
+        fig_seg = px.bar(
+            df_price_seg,
+            x='Price_Segment',
+            y='Sales',
+            color='Price_Segment',
+            title="Sales by Price Category",
+            labels={'Sales': 'Total Sales ($)', 'Price_Segment': 'Price Segment'},
+            color_discrete_sequence=px.colors.qualitative.Bold
+        )
+        fig_seg.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
+        fig_seg.update_layout(xaxis_title="", yaxis_title="")
+        st.plotly_chart(fig_seg, use_container_width=True)
+
+# Chart 2: Discount Rate Distribution (Price Sensitivity)
+with chart_col2:
+    st.subheader(f"Discount Rate Distribution in {filter_title}")
+    if df_selected_tier.empty:
+        st.warning("No data for this combination.")
+    else:
+        # Create bins for discount percentage
+        bins = [0, 10, 20, 30, 40, 50, 100]
+        labels = ['0-10%', '10-20%', '20-30%', '30-40%', '40-50%', '50%+']
+        
+        # We use a copy for safer assignment
+        df_temp = df_selected_tier.copy()
+        df_temp['Discount_Group'] = pd.cut(df_temp['Discount_Pct'], bins=bins, labels=labels, right=False)
+        
+        df_discount_agg = df_temp.groupby('Discount_Group', observed=True)['Sales'].sum().reset_index()
+        
+        fig_disc = px.bar(
+            df_discount_agg,
+            x='Discount_Group',
+            y='Sales',
+            color='Discount_Group',
+            title="Sales Volume by Discount Range",
+            labels={'Sales': 'Total Sales ($)', 'Discount_Group': 'Discount Range'},
+            color_discrete_sequence=px.colors.sequential.Cividis_r # Shows higher sales in darker color
+        )
+        fig_disc.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
+        fig_disc.update_layout(xaxis_title="", yaxis_title="")
+        st.plotly_chart(fig_disc, use_container_width=True)
+
+# Chart 3: Sales Contribution by City Tier (Bar Chart - Remains overall context)
+with chart_col3:
+    st.subheader("Market Potential: Overall Sales Contribution")
     
     # This chart remains unfiltered by Category to show total tier potential
     fig_bar = px.bar(
@@ -295,8 +384,8 @@ with chart_col1:
     fig_bar.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
     st.plotly_chart(fig_bar, use_container_width=True)
 
-# Chart 2: Product Mix (or Single Category View) for Selected Tier
-with chart_col2:
+# Chart 4: Product Mix (or Single Category View) for Selected Tier
+with chart_col4:
     if category_filter == 'All Categories':
         st.subheader(f"Product Mix: {selected_tier}")
         df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
@@ -309,30 +398,22 @@ with chart_col2:
             color_discrete_sequence=px.colors.sequential.Plasma_r
         )
         fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
-    else:
-        st.subheader(f"Category Sales Trend: {selected_tier} ({category_filter})")
-        # Since we have aggregated sales data, we'll display a simple metric or bar for single category view
-        fig_pie = st.empty() # Placeholder
-        st.info(f"The total sales for **{category_filter}** in **{selected_tier}** is **${total_sales:,.0f}** at an average price of **${avg_price_weighted:,.2f}**.")
-        
-        # Display a simple horizontal bar to visualize volume
-        df_cat_summary = pd.DataFrame({
-            'Metric': ['Sales Value'],
-            'Value': [total_sales]
-        })
-        fig_bar_single = px.bar(
-            df_cat_summary, 
-            x='Value', 
-            y='Metric', 
-            orientation='h', 
-            title=f"Sales Value of {category_filter}",
-            color_discrete_sequence=[TIER_COLORS[selected_tier]]
-        )
-        fig_bar_single.update_layout(yaxis={'visible': False, 'showticklabels': False}, xaxis_title="")
-        st.plotly_chart(fig_bar_single, use_container_width=True)
-        
-    if category_filter == 'All Categories':
         st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.subheader(f"Category Sales vs. Avg Price: {category_filter}")
+        # When a single category is selected, show a small table of its data
+        df_cat_data = df_selected_tier[['Category', 'Avg_Price', 'Sales', 'Discount_Pct']].head(1)
+        st.dataframe(
+            df_cat_data.rename(columns={'Avg_Price': 'Avg. Price', 'Discount_Pct': 'Avg. Discount %'}).set_index('Category'),
+            column_config={
+                "Avg. Price": st.column_config.NumberColumn(format="$%.2f"),
+                "Sales": st.column_config.NumberColumn(format="$%d"),
+                "Avg. Discount %": st.column_config.NumberColumn(format="%.1f%%"),
+            },
+            hide_index=False,
+            use_container_width=True
+        )
+        st.info(f"The total sales for **{category_filter}** in **{selected_tier}** is **${total_sales:,.0f}** at a weighted average price of **${avg_price_weighted:,.2f}**.")
 
 
 st.caption("Sales and City Tier data are synthetic for demonstration purposes.")
