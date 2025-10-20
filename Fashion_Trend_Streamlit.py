@@ -10,6 +10,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Define consistent colors for the tiers
+TIER_COLORS = {
+    'Tier 1': '#4F46E5', # Indigo
+    'Tier 2': '#10B981', # Emerald
+    'Tier 3': '#F59E0B'  # Amber
+}
+
 # --- 1. Mock Data Generation Functions ---
 # Generate synthetic sales data
 @st.cache_data
@@ -144,24 +151,24 @@ st.subheader(f"Strategy Focus: **{selected_tier}**")
 def get_client_insight(tier):
     """Generates a dynamic explanation for client presentation."""
     if tier == 'Tier 1':
-        return """
-        <div style='background-color: #e0f2fe; padding: 15px; border-radius: 10px; border-left: 5px solid #0284c7;'>
-        <h4 style='color: #0284c7;'>High-Value Market Strategy (Tier 1)</h4>
-        <p>This segment represents the **highest value market** with significant purchasing power, supporting premium pricing. Our focus should be on **high-margin goods** like <b>Outerwear</b> and <b>Dresses</b>. The strategy here is quality, brand visibility, and high average transaction value.</p>
+        return f"""
+        <div style='background-color: #e0f2fe; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 1']};'>
+        <h4 style='color: {TIER_COLORS['Tier 1']};'>High-Value Market Strategy (Tier 1)</h4>
+        <p>This segment represents the **highest value market** with significant purchasing power, supporting premium pricing. Our focus should be on **high-margin goods** like <b>Outerwear</b> and <b>Dresses</b>. The strategy here is quality, brand visibility, and high average transaction value. **Target cities are: {', '.join(df_cities[df_cities['Tier'] == 'Tier 1']['City'].tolist())}.**</p>
         </div>
         """
     elif tier == 'Tier 2':
-        return """
-        <div style='background-color: #ecfdf5; padding: 15px; border-radius: 10px; border-left: 5px solid #059669;'>
-        <h4 style='color: #059669;'>Balanced Growth Strategy (Tier 2)</h4>
-        <p>Tier 2 offers a strong balance of volume and value. While the average price is moderate, there is significant growth potential across categories like <b>Jeans</b> and <b>Outerwear</b>. We recommend a **mixed pricing strategy** focusing on perceived value and promotions to build loyalty.</p>
+        return f"""
+        <div style='background-color: #ecfdf5; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 2']};'>
+        <h4 style='color: {TIER_COLORS['Tier 2']};'>Balanced Growth Strategy (Tier 2)</h4>
+        <p>Tier 2 offers a strong balance of volume and value. While the average price is moderate, there is significant growth potential across categories like <b>Jeans</b> and <b>Outerwear</b>. We recommend a **mixed pricing strategy** focusing on perceived value and promotions to build loyalty. **Target cities are: {', '.join(df_cities[df_cities['Tier'] == 'Tier 2']['City'].tolist())}.**</p>
         </div>
         """
     else:
-        return """
-        <div style='background-color: #fffbeb; padding: 15px; border-radius: 10px; border-left: 5px solid #f59e0b;'>
-        <h4 style='color: #f59e0b;'>Volume & Accessibility Strategy (Tier 3)</h4>
-        <p>This segment is **highly price-sensitive** but offers the largest potential for volume sales. The dominant product is <b>T-Shirts</b>. Our strategy must be **cost-leadership**, focusing on essential, affordable apparel and optimizing logistics for wider reach.</p>
+        return f"""
+        <div style='background-color: #fffbeb; padding: 15px; border-radius: 10px; border-left: 5px solid {TIER_COLORS['Tier 3']};'>
+        <h4 style='color: {TIER_COLORS['Tier 3']};'>Volume & Accessibility Strategy (Tier 3)</h4>
+        <p>This segment is **highly price-sensitive** but offers the largest potential for volume sales. The dominant product is <b>T-Shirts</b>. Our strategy must be **cost-leadership**, focusing on essential, affordable apparel and optimizing logistics for wider reach. **Target cities are: {', '.join(df_cities[df_cities['Tier'] == 'Tier 3']['City'].tolist())}.**</p>
         </div>
         """
 
@@ -171,10 +178,12 @@ st.markdown("---")
 # --- 7. Geographic Visualization (Map) ---
 st.header("🇮🇳 Market Distribution: City Tier Map")
 
-# Map chart using Plotly Express (requires mapbox token for detailed tiles, 
-# but uses default open-source tiles if not available)
+# Filter the city data based on the selected tier
+df_filtered_cities = df_cities[df_cities['Tier'] == selected_tier].copy()
+
+# Map chart using Plotly Express
 fig_map = px.scatter_mapbox(
-    df_cities,
+    df_filtered_cities, # <-- NOW USES ONLY THE FILTERED DATA
     lat="Lat",
     lon="Lon",
     hover_name="City",
@@ -183,12 +192,8 @@ fig_map = px.scatter_mapbox(
     size_max=25,
     zoom=3.5,  # Center the map over India
     center={"lat": 23.5, "lon": 78}, # Approximate center of India
-    title="Indian Cities by Market Tier",
-    color_discrete_map={
-        'Tier 1': '#4F46E5', # Indigo
-        'Tier 2': '#10B981', # Emerald
-        'Tier 3': '#F59E0B'  # Amber
-    }
+    title=f"Geographic Focus: {selected_tier} Cities",
+    color_discrete_map=TIER_COLORS,
 )
 
 # Set map style to a standard public tile set (Open Street Map)
@@ -213,13 +218,9 @@ with chart_col1:
         color='Tier',
         title="Total Market Value Breakdown",
         labels={'TotalSales': 'Total Sales Value ($)', 'Tier': 'City Tier'},
-        color_discrete_map={
-            'Tier 1': '#4F46E5',  
-            'Tier 2': '#10B981',  
-            'Tier 3': '#F59E0B'   
-        }
+        color_discrete_map=TIER_COLORS
     )
-    for tier, color in zip(['Tier 1', 'Tier 2', 'Tier 3'], ['#4F46E5', '#10B981', '#F59E0B']):
+    for tier in TIER_COLORS.keys():
         if tier == selected_tier:
             fig_bar.update_traces(marker_line_color='black', marker_line_width=3, selector=dict(name=tier))
 
