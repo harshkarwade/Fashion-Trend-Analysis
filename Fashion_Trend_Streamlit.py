@@ -27,7 +27,7 @@ if 'selected_tiers_state' not in st.session_state:
     st.session_state['selected_tiers_state'] = ['Tier 1', 'Tier 2', 'Tier 3']
 
 
-# --- 1. Mock Data Generation Functions (Dashboard Data) ---
+# --- 1. Mock Data Generation Functions ---
 @st.cache_data
 def generate_sales_data():
     """Generates a synthetic dataset for fashion sales segmented by city tier, price, discount, and GENDER, including a simulated Gross Profit."""
@@ -69,37 +69,34 @@ def generate_sales_data():
                 avg_price_unadjusted = cat['base_price'] * price_adj * (1 + (np.random.rand() - 0.5) * 0.1)
                 count = sales / avg_price_unadjusted
                 
-                # --- Discount Simulation ---
                 if tier == 'Tier 1': discount = np.random.uniform(0.05, 0.20)
                 elif tier == 'Tier 2': discount = np.random.uniform(0.15, 0.30)
                 else: discount = np.random.uniform(0.25, 0.45)
 
-                # --- Price Segmentation ---
                 if cat['base_price'] > 100: price_segment = 'Luxury'
                 elif cat['base_price'] > 70: price_segment = 'Premium'
                 elif cat['base_price'] > 40: price_segment = 'Mid-Range'
                 else: price_segment = 'Low-End'
                 
-                # --- Profit Simulation (NEW) ---
-                # Simulated COGS margin factors: Lower margin (higher cost) for Low-End, Higher margin (lower cost) for Luxury
-                cogs_factor = 0.60 # 40% margin base
-                if price_segment == 'Luxury': cogs_factor = 0.50 # Simulated 50% margin (lower relative cost)
-                elif price_segment == 'Low-End': cogs_factor = 0.70 # Simulated 30% margin (higher relative cost)
+                # --- Profit Simulation ---
+                cogs_factor = 0.60 
+                if price_segment == 'Luxury': cogs_factor = 0.50
+                elif price_segment == 'Low-End': cogs_factor = 0.70
                 
-                unit_cost = cat['base_price'] * cogs_factor * price_adj # Cost based on unadjusted base price and segment factor
+                unit_cost = cat['base_price'] * cogs_factor * price_adj
                 total_cogs = unit_cost * count
                 gross_profit = sales - total_cogs
                 
                 data.append({
                     'Tier': tier, 'Category': cat['name'], 'Gender': gender, 'Sales': sales, 'Count': count,
                     'Avg_Price': avg_price_unadjusted, 'Discount_Pct': discount * 100, 'Price_Segment': price_segment,
-                    'Gross_Profit': gross_profit # NEW FIELD
+                    'Gross_Profit': gross_profit
                 })
     return pd.DataFrame(data)
 
 @st.cache_data
 def generate_city_tier_data():
-    """Generates synthetic city tier data for geographic mapping (partial list for simplicity)."""
+    """Generates synthetic city tier data for geographic mapping."""
     city_data = [
         {'City': 'Ahmedabad', 'State': 'Gujarat', 'Tier': 'Tier 1', 'Lat': 23.0225, 'Lon': 72.5714},
         {'City': 'Bengaluru', 'State': 'Karnataka', 'Tier': 'Tier 1', 'Lat': 12.9716, 'Lon': 77.5946},
@@ -125,7 +122,7 @@ df_cities = generate_city_tier_data()
 # --- 2. ML Prediction Logic (Simulated Random Forest Classifier) ---
 def mock_ml_predict_tier(discount_price, original_price, discount_pct):
     """
-    Simulates the prediction based on the K-Means clustering outcomes (price & discount being key features).
+    Simulates the prediction based on the K-Means clustering outcomes.
     """
     if original_price >= 150 and discount_pct <= 20:
         return 'Tier 1' # Premium/High-End, Low Discount
@@ -133,6 +130,19 @@ def mock_ml_predict_tier(discount_price, original_price, discount_pct):
         return 'Tier 3' # Low-End/Value, High Discount
     else:
         return 'Tier 2' # Mid-Range
+
+# --- CALLBACK FUNCTIONS ---
+def tier_selection_callback():
+    # If the user manually changes the filter, clear the prediction override
+    st.session_state['predicted_tier_override'] = None
+    st.session_state['selected_tiers_state'] = st.session_state['tier_multiselect']
+
+def reset_tiers_callback():
+    # Resets the filters to analyze all tiers
+    st.session_state['predicted_tier_override'] = None
+    st.session_state['selected_tiers_state'] = ['Tier 1', 'Tier 2', 'Tier 3']
+    # Explicitly set the multiselect key default back to all tiers
+    st.session_state['tier_multiselect'] = ['Tier 1', 'Tier 2', 'Tier 3']
 
 # --- 3. Dashboard Title and Description ---
 st.title("🛍️ Fashion Market Segmentation & Strategic Dashboard")
@@ -142,13 +152,7 @@ st.markdown("---")
 # --- 4. Sidebar (Filters & ML Prediction Tool) ---
 st.sidebar.header("🎯 Target Audience Filters")
 
-# Function to handle tier multi-select changes
-def tier_selection_callback():
-    # If the user manually changes the filter, clear the prediction override
-    st.session_state['predicted_tier_override'] = None
-    st.session_state['selected_tiers_state'] = st.session_state['tier_multiselect']
-
-# Dashboard Filters
+# Determine default for the multiselect based on the override state
 selected_tiers_default = st.session_state['selected_tiers_state'] if st.session_state['predicted_tier_override'] is None else [st.session_state['predicted_tier_override']]
 selected_tiers = st.sidebar.multiselect(
     "1. Select City Tiers:",
@@ -158,9 +162,8 @@ selected_tiers = st.sidebar.multiselect(
     on_change=tier_selection_callback
 )
 
-# Use the state value for the dashboard filtering logic
+# Set the final selected_tiers for the rest of the dashboard logic
 if st.session_state['predicted_tier_override']:
-    # If ML prediction happened, override the selected_tiers variable for filtering
     selected_tiers = [st.session_state['predicted_tier_override']]
     
 all_categories = ['All Categories'] + df_sales['Category'].unique().tolist()
@@ -177,7 +180,7 @@ gender_filter = st.sidebar.selectbox(
 # --- ML PREDICTION SECTION ---
 st.sidebar.markdown("---")
 st.sidebar.header("🤖 ML Model: Target Audience Predictor")
-st.sidebar.markdown("**Use the Model** to instantly predict the optimal Tier for a new product based on its pricing.")
+st.sidebar.markdown("**Use the Model** to instantly predict the optimal Tier for a new product.")
 
 with st.sidebar.form("ml_prediction_form"):
     original_price_input = st.number_input("Original Price ($)", min_value=10, value=75, step=5)
@@ -186,40 +189,39 @@ with st.sidebar.form("ml_prediction_form"):
     discount_price_calc = original_price_input * (1 - discount_pct_input / 100)
     st.markdown(f"**Calculated Discounted Price: ${discount_price_calc:,.2f}**")
     
-    submitted = st.form_submit_button("Predict Audience Tier & Analyze")
+    submitted = st.form_submit_button("Predict Tier & Analyze")
 
 if submitted:
     predicted_tier = mock_ml_predict_tier(discount_price_calc, original_price_input, discount_pct_input)
     tier_color = TIER_COLORS.get(predicted_tier, '#374151')
     
-    # --- Action: Set Session State to override filters ---
+    # Action: Set Session State to override filters
     st.session_state['predicted_tier_override'] = predicted_tier
     st.session_state['selected_tiers_state'] = [predicted_tier]
 
-    # Display prediction result
     st.sidebar.markdown(f"""
         <div style='background-color: {tier_color}1A; padding: 10px; border-radius: 8px; border-left: 4px solid {tier_color}; margin-top: 15px;'>
         <h5 style='color: {tier_color}; margin: 0;'>Predicted Target Tier:</h5>
         <h2 style='color: {tier_color}; margin: 5px 0 0;'>{predicted_tier}</h2>
         </div>
-        <p style='font-size: 12px; margin-top: 5px;'>**Dashboard updated** to analyze **{predicted_tier}** sales profile and map.</p>
+        <p style='font-size: 12px; margin-top: 5px;'>**Dashboard updated** to analyze **{predicted_tier}**.</p>
     """, unsafe_allow_html=True)
     
     st.rerun()
+    
+# --- NEW RESET BUTTON ---
+st.sidebar.markdown("---")
+st.sidebar.button("🔄 Reset Filters / Analyze All Tiers", on_click=reset_tiers_callback, use_container_width=True)
 
 # --- 5. Data Filtering and KPI Calculation (Dynamic Filtering) ---
-# Filter data using the 'selected_tiers' variable (which is overridden if a prediction was made)
 df_selected_tier = df_sales[df_sales['Tier'].isin(selected_tiers)].copy()
-if category_filter != 'All Categories':
-    df_selected_tier = df_selected_tier[df_selected_tier['Category'] == category_filter].copy()
-if gender_filter != 'All Genders':
-    df_selected_tier = df_selected_tier[df_selected_tier['Gender'] == gender_filter].copy()
+if category_filter != 'All Categories': df_selected_tier = df_selected_tier[df_selected_tier['Category'] == category_filter].copy()
+if gender_filter != 'All Genders': df_selected_tier = df_selected_tier[df_selected_tier['Gender'] == gender_filter].copy()
 
 total_sales = df_selected_tier['Sales'].sum() if not df_selected_tier.empty else 0
 total_count = df_selected_tier['Count'].sum() if total_sales > 0 else 0
 avg_price_weighted = total_sales / total_count if total_count > 0 else 0
 weighted_avg_discount = (df_selected_tier['Discount_Pct'] * df_selected_tier['Sales']).sum() / total_sales if total_sales > 0 else 0
-# NEW: Total Gross Profit KPI
 total_profit = df_selected_tier['Gross_Profit'].sum() if not df_selected_tier.empty else 0
 
 
@@ -233,8 +235,8 @@ st.header(f"Key Metrics for {filter_title}")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1: st.metric(label="Total Sales Value", value=f"${total_sales:,.0f}", help="Total potential revenue for this segment and category filter.")
-with col2: st.metric(label="Weighted Avg. Price Point", value=f"${avg_price_weighted:,.2f}", help="The typical price point for items sold in this filtered segment.")
-with col3: st.metric(label="Total Gross Profit", value=f"${total_profit:,.0f}", help="Total Revenue minus simulated Cost of Goods Sold for this segment.")
+with col2: st.metric(label="Total Gross Profit", value=f"${total_profit:,.0f}", help="Total Revenue minus simulated Cost of Goods Sold for this segment.")
+with col3: st.metric(label="Weighted Avg. Price Point", value=f"${avg_price_weighted:,.2f}", help="The typical price point for items sold in this filtered segment.")
 with col4:
     if category_filter == 'All Categories':
         dominant_segment = df_selected_tier.groupby('Price_Segment')['Sales'].sum().idxmax() if not df_selected_tier.empty else 'N/A'
@@ -335,7 +337,7 @@ else:
         fig_disc.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_disc, use_container_width=True)
         
-    # Chart 3: Profitability Analysis (NEW)
+    # Chart 3: Profitability Analysis
     with chart_col3:
         st.subheader(f"3. Profitability Analysis: Gross Profit by Category")
         df_profit_cat = df_selected_tier.groupby('Category')['Gross_Profit'].sum().reset_index().sort_values(by='Gross_Profit', ascending=False)
