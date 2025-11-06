@@ -27,10 +27,10 @@ if 'selected_tiers_state' not in st.session_state:
     st.session_state['selected_tiers_state'] = ['Tier 1', 'Tier 2', 'Tier 3']
 
 
-# --- 1. Mock Data Generation Functions ---
+# --- 1. Mock Data Generation Functions (Dashboard Data) ---
 @st.cache_data
 def generate_sales_data():
-    """Generates a synthetic dataset for fashion sales segmented by city tier, price, discount, and GENDER."""
+    """Generates a synthetic dataset for fashion sales segmented by city tier, price, discount, and GENDER, including a simulated Gross Profit."""
     np.random.seed(42)  # for reproducibility
     tiers = ['Tier 1', 'Tier 2', 'Tier 3']
     genders = ['Men', 'Women', 'Unisex']
@@ -69,18 +69,31 @@ def generate_sales_data():
                 avg_price_unadjusted = cat['base_price'] * price_adj * (1 + (np.random.rand() - 0.5) * 0.1)
                 count = sales / avg_price_unadjusted
                 
+                # --- Discount Simulation ---
                 if tier == 'Tier 1': discount = np.random.uniform(0.05, 0.20)
                 elif tier == 'Tier 2': discount = np.random.uniform(0.15, 0.30)
                 else: discount = np.random.uniform(0.25, 0.45)
 
+                # --- Price Segmentation ---
                 if cat['base_price'] > 100: price_segment = 'Luxury'
                 elif cat['base_price'] > 70: price_segment = 'Premium'
                 elif cat['base_price'] > 40: price_segment = 'Mid-Range'
                 else: price_segment = 'Low-End'
                 
+                # --- Profit Simulation (NEW) ---
+                # Simulated COGS margin factors: Lower margin (higher cost) for Low-End, Higher margin (lower cost) for Luxury
+                cogs_factor = 0.60 # 40% margin base
+                if price_segment == 'Luxury': cogs_factor = 0.50 # Simulated 50% margin (lower relative cost)
+                elif price_segment == 'Low-End': cogs_factor = 0.70 # Simulated 30% margin (higher relative cost)
+                
+                unit_cost = cat['base_price'] * cogs_factor * price_adj # Cost based on unadjusted base price and segment factor
+                total_cogs = unit_cost * count
+                gross_profit = sales - total_cogs
+                
                 data.append({
                     'Tier': tier, 'Category': cat['name'], 'Gender': gender, 'Sales': sales, 'Count': count,
-                    'Avg_Price': avg_price_unadjusted, 'Discount_Pct': discount * 100, 'Price_Segment': price_segment
+                    'Avg_Price': avg_price_unadjusted, 'Discount_Pct': discount * 100, 'Price_Segment': price_segment,
+                    'Gross_Profit': gross_profit # NEW FIELD
                 })
     return pd.DataFrame(data)
 
@@ -96,11 +109,9 @@ def generate_city_tier_data():
         {'City': 'Kolkata', 'State': 'West Bengal', 'Tier': 'Tier 1', 'Lat': 22.5726, 'Lon': 88.3639},
         {'City': 'Mumbai', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 19.0760, 'Lon': 72.8777},
         {'City': 'Pune', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 18.5204, 'Lon': 73.8567},
-        # Tier 2 (Partial list)
         {'City': 'Agra', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 27.1767, 'Lon': 78.0081},
         {'City': 'Amritsar', 'State': 'Punjab', 'Tier': 'Tier 2', 'Lat': 31.6340, 'Lon': 74.8723},
         {'City': 'Bhopal', 'State': 'Madhya Pradesh', 'Tier': 'Tier 2', 'Lat': 23.2599, 'Lon': 77.4126},
-        # Tier 3 (Partial list)
         {'City': 'Bikaner', 'State': 'Rajasthan', 'Tier': 'Tier 3', 'Lat': 28.0229, 'Lon': 73.3119},
         {'City': 'Cuttack', 'State': 'Odisha', 'Tier': 'Tier 3', 'Lat': 20.4625, 'Lon': 85.8828},
         {'City': 'Gandhinagar', 'State': 'Gujarat', 'Tier': 'Tier 3', 'Lat': 23.2639, 'Lon': 72.6412},
@@ -138,17 +149,18 @@ def tier_selection_callback():
     st.session_state['selected_tiers_state'] = st.session_state['tier_multiselect']
 
 # Dashboard Filters
+selected_tiers_default = st.session_state['selected_tiers_state'] if st.session_state['predicted_tier_override'] is None else [st.session_state['predicted_tier_override']]
 selected_tiers = st.sidebar.multiselect(
     "1. Select City Tiers:",
     options=['Tier 1', 'Tier 2', 'Tier 3'],
-    default=st.session_state['selected_tiers_state'],
+    default=selected_tiers_default,
     key='tier_multiselect',
     on_change=tier_selection_callback
 )
 
 # Use the state value for the dashboard filtering logic
 if st.session_state['predicted_tier_override']:
-    # If ML prediction happened, override the selected_tiers variable
+    # If ML prediction happened, override the selected_tiers variable for filtering
     selected_tiers = [st.session_state['predicted_tier_override']]
     
 all_categories = ['All Categories'] + df_sales['Category'].unique().tolist()
@@ -165,7 +177,7 @@ gender_filter = st.sidebar.selectbox(
 # --- ML PREDICTION SECTION ---
 st.sidebar.markdown("---")
 st.sidebar.header("🤖 ML Model: Target Audience Predictor")
-st.sidebar.markdown("**Use the Model** to instantly predict the optimal Tier for a new product.")
+st.sidebar.markdown("**Use the Model** to instantly predict the optimal Tier for a new product based on its pricing.")
 
 with st.sidebar.form("ml_prediction_form"):
     original_price_input = st.number_input("Original Price ($)", min_value=10, value=75, step=5)
@@ -190,10 +202,9 @@ if submitted:
         <h5 style='color: {tier_color}; margin: 0;'>Predicted Target Tier:</h5>
         <h2 style='color: {tier_color}; margin: 5px 0 0;'>{predicted_tier}</h2>
         </div>
-        <p style='font-size: 12px; margin-top: 5px;'>**Dashboard updated** to analyze {predicted_tier} sales profile.</p>
+        <p style='font-size: 12px; margin-top: 5px;'>**Dashboard updated** to analyze **{predicted_tier}** sales profile and map.</p>
     """, unsafe_allow_html=True)
     
-    # Rerun the app to apply the state change
     st.rerun()
 
 # --- 5. Data Filtering and KPI Calculation (Dynamic Filtering) ---
@@ -208,6 +219,8 @@ total_sales = df_selected_tier['Sales'].sum() if not df_selected_tier.empty else
 total_count = df_selected_tier['Count'].sum() if total_sales > 0 else 0
 avg_price_weighted = total_sales / total_count if total_count > 0 else 0
 weighted_avg_discount = (df_selected_tier['Discount_Pct'] * df_selected_tier['Sales']).sum() / total_sales if total_sales > 0 else 0
+# NEW: Total Gross Profit KPI
+total_profit = df_selected_tier['Gross_Profit'].sum() if not df_selected_tier.empty else 0
 
 
 # --- 6. KPI Metrics (Top Row) ---
@@ -219,18 +232,55 @@ if gender_filter != 'All Genders': filter_title += f" for {gender_filter}"
 st.header(f"Key Metrics for {filter_title}")
 col1, col2, col3, col4 = st.columns(4)
 
-with col1: st.metric(label="Total Sales Value", value=f"${total_sales:,.0f}", help="Total potential revenue for this segment.")
-with col2: st.metric(label="Weighted Avg. Price Point", value=f"${avg_price_weighted:,.2f}", help="The typical price point for items sold.")
-with col3: st.metric(label="Avg. Discount Rate", value=f"{weighted_avg_discount:,.1f}%", help="The sales-weighted average discount applied.")
+with col1: st.metric(label="Total Sales Value", value=f"${total_sales:,.0f}", help="Total potential revenue for this segment and category filter.")
+with col2: st.metric(label="Weighted Avg. Price Point", value=f"${avg_price_weighted:,.2f}", help="The typical price point for items sold in this filtered segment.")
+with col3: st.metric(label="Total Gross Profit", value=f"${total_profit:,.0f}", help="Total Revenue minus simulated Cost of Goods Sold for this segment.")
 with col4:
     if category_filter == 'All Categories':
         dominant_segment = df_selected_tier.groupby('Price_Segment')['Sales'].sum().idxmax() if not df_selected_tier.empty else 'N/A'
-        st.metric(label="Dominant Price Segment", value=dominant_segment, help="The price segment generating the most sales.")
-    else: st.metric(label="Selected Segment", value=f"{category_filter} / {gender_filter}", help="The category and gender currently being analyzed.")
+        st.metric(label="Dominant Price Segment", value=dominant_segment, help="The price segment (Luxury, Premium, Mid-Range, Low-End) generating the most sales.")
+    else:
+          st.metric(label="Avg. Discount Rate", value=f"{weighted_avg_discount:,.1f}%", help="The sales-weighted average discount applied in this segment.")
 
 st.markdown("---")
 
-# --- 7. Dynamic Geographic Visualization (Map) ---
+# --- 7. Dynamic Client Explanation/Takeaway ---
+st.header("Client Presentation Summary")
+
+def get_client_insight(tiers, category, gender, discount):
+    """Generates a dynamic explanation for client presentation."""
+    tier_summary = ', '.join(tiers)
+    
+    if len(tiers) == 3:
+        summary_title = "Holistic Strategy (All Tiers)"
+        summary_color = "#374151"
+        overall_avg_price = df_sales['Sales'].sum() / df_sales['Count'].sum()
+        insight = f"This view provides the **National Aggregate** across all market types. The combined weighted average price is **${overall_avg_price:,.2f}**, indicating the overall market sweet spot. The national average discount of **{discount:,.1f}%** sets a benchmark for promotional spend."
+    else:
+        tier = tiers[0] if len(tiers) == 1 else "Mixed Tiers"
+        cat_text = f"focusing on **{category}**" if category != 'All Categories' else "covering all categories"
+        gender_text = f"targeting the **{gender}** audience" if gender != 'All Genders' else "across all genders"
+        
+        if len(tiers) == 1:
+            summary_title = f"Targeted Strategy ({tier})"
+            summary_color = TIER_COLORS.get(tier, '#374151')
+            insight = f"This single-tier focus (Avg. Price: ${avg_price_weighted:,.2f}) allows for deep specialization. {gender_text.capitalize()}, {cat_text}, the strategy must emphasize unique value propositions tailored to the '{tier}' customer profile. Discounting at **{discount:,.1f}%** is specific to this segment."
+        else:
+            summary_title = f"Regional/Hybrid Strategy ({tier_summary})"
+            summary_color = "#9333EA"
+            insight = f"This mixed-tier analysis combines premium and growth markets. The aggregated strategy (Avg. Price: ${avg_price_weighted:,.2f}) requires a **fluid pricing structure** to manage the disparate price sensitivities of the included segments. The average discount of **{discount:,.1f}%** must be carefully managed."
+            
+    return f"""
+        <div style='background-color: {summary_color}1A; padding: 15px; border-radius: 10px; border-left: 5px solid {summary_color};'>
+        <h4 style='color: {summary_color};'>{summary_title}</h4>
+        <p>{insight}</p>
+        </div>
+    """
+
+st.markdown(get_client_insight(selected_tiers, category_filter, gender_filter, weighted_avg_discount), unsafe_allow_html=True)
+st.markdown("---")
+
+# --- 8. Dynamic Geographic Visualization (Map) ---
 st.header("🇮🇳 Market Distribution: City Tier Map")
 
 # Filter the city data based on the dynamic 'selected_tiers'
@@ -251,7 +301,7 @@ st.plotly_chart(fig_map, use_container_width=True)
 
 st.markdown("---")
 
-# --- 8. Core Visualizations (Strategic Pillars) ---
+# --- 9. Core Visualizations (Strategic Pillars) ---
 st.header("Detailed Performance Analysis (Strategic Pillars)")
 chart_col1, chart_col2 = st.columns(2)
 chart_col3, chart_col4 = st.columns(2)
@@ -284,33 +334,37 @@ else:
         fig_disc.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
         fig_disc.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_disc, use_container_width=True)
-
-    # Chart 3: Gender/Tier Split
+        
+    # Chart 3: Profitability Analysis (NEW)
     with chart_col3:
-        if len(selected_tiers) > 1:
-            st.subheader(f"3. Focus Trend: Sales Split by Tier")
-            df_tier_split = df_selected_tier.groupby('Tier')['Sales'].sum().reset_index()
-            fig_tier_split = px.pie(df_tier_split, values='Sales', names='Tier', title="Tier Sales Contribution", hole=.5, color_discrete_map=TIER_COLORS)
-            fig_tier_split.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
-            st.plotly_chart(fig_tier_split, use_container_width=True)
-        else:
-            st.subheader(f"3. Focus Trend: Sales Split by Gender")
-            df_gender_mix = df_selected_tier.groupby('Gender')['Sales'].sum().reset_index()
-            fig_gender_bar = px.bar(df_gender_mix, x='Gender', y='Sales', color='Gender', title=f"Gender Revenue Distribution in {selected_tiers[0]}", labels={'Sales': 'Total Sales ($)'}, color_discrete_sequence=px.colors.qualitative.Pastel)
-            fig_gender_bar.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
-            fig_gender_bar.update_layout(xaxis_title="", yaxis_title="")
-            st.plotly_chart(fig_gender_bar, use_container_width=True)
+        st.subheader(f"3. Profitability Analysis: Gross Profit by Category")
+        df_profit_cat = df_selected_tier.groupby('Category')['Gross_Profit'].sum().reset_index().sort_values(by='Gross_Profit', ascending=False)
+        
+        fig_profit = px.bar(
+            df_profit_cat,
+            x='Category',
+            y='Gross_Profit',
+            color='Category',
+            title=f"Gross Profit Distribution in {filter_title}",
+            labels={'Gross_Profit': 'Total Gross Profit ($)'},
+            color_discrete_sequence=px.colors.qualitative.Safe
+        )
+        fig_profit.update_traces(texttemplate='$%{y:,.2s}', textposition='outside')
+        fig_profit.update_layout(xaxis_title="", yaxis_title="")
+        st.plotly_chart(fig_profit, use_container_width=True)
 
     # Chart 4: Strategic Pricing Comparison
     with chart_col4:
         if category_filter == 'All Categories':
-            st.subheader(f"4. Brand Strategy Profile: Product Mix")
-            df_category_mix = df_selected_tier.groupby('Category')['Sales'].sum().reset_index()
-            fig_pie = px.pie(df_category_mix, values='Sales', names='Category', title=f"Category Revenue Distribution in {filter_title}", hole=.5, color_discrete_sequence=px.colors.sequential.Plasma_r)
-            fig_pie.update_traces(textposition='inside', textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=1)))
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.subheader(f"4. Focus Trend: Sales Split by Gender")
+            df_gender_mix = df_selected_tier.groupby('Gender')['Sales'].sum().reset_index()
+            fig_gender_bar = px.bar(df_gender_mix, x='Gender', y='Sales', color='Gender', title=f"Gender Revenue Distribution in {filter_title}", labels={'Sales': 'Total Sales ($)'}, color_discrete_sequence=px.colors.qualitative.Pastel)
+            fig_gender_bar.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
+            fig_gender_bar.update_layout(xaxis_title="", yaxis_title="")
+            st.plotly_chart(fig_gender_bar, use_container_width=True)
+
         else:
-            st.subheader(f"4. Brand Strategy Profile: Strategic Pricing Comparison")
+            st.subheader(f"4. Strategic Pricing Comparison")
             df_price_comp = df_sales[(df_sales['Category'] == category_filter) & (df_sales['Tier'].isin(selected_tiers))].copy()
             if gender_filter != 'All Genders':
                 df_price_comp = df_price_comp[df_price_comp['Gender'] == gender_filter].copy()
@@ -322,7 +376,7 @@ else:
             st.plotly_chart(fig_price_comp, use_container_width=True)
 
 
-# --- 9. Product Deep Dive Analysis ---
+# --- 10. Product Deep Dive Analysis ---
 st.markdown("---")
 st.header("🛒 Product Deep Dive & Portfolio Analysis")
 
@@ -344,7 +398,7 @@ else:
     with deep_col2:
         st.subheader("Portfolio Efficiency: Sales Value vs. Volume")
         df_scatter = df_selected_tier.groupby('Category').agg(TotalSales=('Sales', 'sum'), TotalCount=('Count', 'sum'), AvgPrice=('Avg_Price', 'mean')).reset_index()
-        fig_scatter = px.scatter(df_scatter, x='TotalCount', y='TotalSales', size='AvgPrice', color='Category', hover_name='Category', title="Product Positioning (Sales Volume vs. Revenue)", labels={'TotalCount': 'Total Units Sold (Volume)', 'TotalSales': 'Total Revenue ($)', 'Avg_Price': 'Avg. Price'},)
+        fig_scatter = px.scatter(df_scatter, x='TotalCount', y='TotalSales', size='AvgPrice', color='Category', hover_name='Category', title="Product Positioning (Sales Volume vs. Revenue)", labels={'TotalCount': 'Total Units Sold (Volume)', 'TotalSales': 'Total Revenue ($)', 'AvgPrice': 'Avg. Price'},)
         fig_scatter.add_vline(x=df_scatter['TotalCount'].mean(), line_width=1, line_dash="dash", line_color="gray")
         fig_scatter.add_hline(y=df_scatter['TotalSales'].mean(), line_width=1, line_dash="dash", line_color="gray")
         fig_scatter.update_layout(xaxis_title="Volume (Units Sold)", yaxis_title="Revenue ($)", legend_title="Category")
