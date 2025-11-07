@@ -20,7 +20,7 @@ TIER_COLORS = {
     'Tier 3': '#F59E0B'  # Amber (Value/Budget)
 }
 
-# Initialize session state for ML prediction override
+# Initialize session state for ML prediction override and tier selection
 if 'predicted_tier_override' not in st.session_state:
     st.session_state['predicted_tier_override'] = None
 if 'selected_tiers_state' not in st.session_state:
@@ -30,7 +30,7 @@ if 'selected_tiers_state' not in st.session_state:
 # --- 1. Mock Data Generation Functions ---
 @st.cache_data
 def generate_sales_data():
-    """Generates a synthetic dataset for fashion sales segmented by city tier, price, discount, and GENDER, including a simulated Gross Profit."""
+    """Generates a synthetic dataset for fashion sales segmented by city tier, price, discount, and GENDER, including Gross Profit."""
     np.random.seed(42)  # for reproducibility
     tiers = ['Tier 1', 'Tier 2', 'Tier 3']
     genders = ['Men', 'Women', 'Unisex']
@@ -141,7 +141,6 @@ def reset_tiers_callback():
     # Resets the filters to analyze all tiers
     st.session_state['predicted_tier_override'] = None
     st.session_state['selected_tiers_state'] = ['Tier 1', 'Tier 2', 'Tier 3']
-    # Explicitly set the multiselect key default back to all tiers
     st.session_state['tier_multiselect'] = ['Tier 1', 'Tier 2', 'Tier 3']
 
 # --- 3. Dashboard Title and Description ---
@@ -166,10 +165,11 @@ selected_tiers = st.sidebar.multiselect(
 if st.session_state['predicted_tier_override']:
     selected_tiers = [st.session_state['predicted_tier_override']]
     
-all_categories = ['All Categories'] + df_sales['Category'].unique().tolist()
+all_categories = df_sales['Category'].unique().tolist()
+all_categories_filter = ['All Categories'] + all_categories
 category_filter = st.sidebar.selectbox(
     "2. Filter by Product Category:",
-    options=all_categories
+    options=all_categories_filter
 )
 all_genders = ['All Genders'] + df_sales['Gender'].unique().tolist()
 gender_filter = st.sidebar.selectbox(
@@ -209,9 +209,11 @@ if submitted:
     
     st.rerun()
     
-# --- NEW RESET BUTTON ---
+# --- RESET BUTTON ---
 st.sidebar.markdown("---")
 st.sidebar.button("🔄 Reset Filters / Analyze All Tiers", on_click=reset_tiers_callback, use_container_width=True)
+st.sidebar.markdown("---")
+
 
 # --- 5. Data Filtering and KPI Calculation (Dynamic Filtering) ---
 df_selected_tier = df_sales[df_sales['Tier'].isin(selected_tiers)].copy()
@@ -285,7 +287,6 @@ st.markdown("---")
 # --- 8. Dynamic Geographic Visualization (Map) ---
 st.header("🇮🇳 Market Distribution: City Tier Map")
 
-# Filter the city data based on the dynamic 'selected_tiers'
 df_filtered_cities = df_cities[df_cities['Tier'].isin(selected_tiers)].copy()
 
 fig_map = px.scatter_mapbox(
@@ -380,8 +381,7 @@ else:
 
 # --- 10. Product Deep Dive Analysis ---
 st.markdown("---")
-st.header("🛒 Product Deep Dive & Portfolio Analysis")
-
+st.header("🛒 Product Deep Dive & Comparative Analysis")
 deep_col1, deep_col2 = st.columns(2)
 
 if df_selected_tier.empty:
@@ -396,14 +396,46 @@ else:
         fig_treemap.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         st.plotly_chart(fig_treemap, use_container_width=True)
 
-    # Chart 6: Portfolio Efficiency (Sales vs. Count)
+    # Chart 6: Dual Category Comparison (NEW)
     with deep_col2:
-        st.subheader("Portfolio Efficiency: Sales Value vs. Volume")
-        df_scatter = df_selected_tier.groupby('Category').agg(TotalSales=('Sales', 'sum'), TotalCount=('Count', 'sum'), AvgPrice=('Avg_Price', 'mean')).reset_index()
-        fig_scatter = px.scatter(df_scatter, x='TotalCount', y='TotalSales', size='AvgPrice', color='Category', hover_name='Category', title="Product Positioning (Sales Volume vs. Revenue)", labels={'TotalCount': 'Total Units Sold (Volume)', 'TotalSales': 'Total Revenue ($)', 'AvgPrice': 'Avg. Price'},)
-        fig_scatter.add_vline(x=df_scatter['TotalCount'].mean(), line_width=1, line_dash="dash", line_color="gray")
-        fig_scatter.add_hline(y=df_scatter['TotalSales'].mean(), line_width=1, line_dash="dash", line_color="gray")
-        fig_scatter.update_layout(xaxis_title="Volume (Units Sold)", yaxis_title="Revenue ($)", legend_title="Category")
-        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.subheader("Comparative Profitability by Category")
+        
+        # --- Comparison Filters ---
+        comparison_cols = st.columns(2)
+        cat1 = comparison_cols[0].selectbox("Category A:", options=all_categories, index=0)
+        cat2 = comparison_cols[1].selectbox("Category B:", options=all_categories, index=1)
+        
+        df_comp = df_selected_tier[df_selected_tier['Category'].isin([cat1, cat2])].copy()
+        
+        df_agg_comp = df_comp.groupby(['Tier', 'Category']).agg(
+            TotalSales=('Sales', 'sum'),
+            TotalProfit=('Gross_Profit', 'sum')
+        ).reset_index()
 
-st.caption("Sales and City Tier data are synthetic for demonstration purposes.")
+        df_melted = df_agg_comp.melt(
+            id_vars=['Tier', 'Category'], 
+            value_vars=['TotalSales', 'TotalProfit'], 
+            var_name='Metric', 
+            value_name='Value'
+        )
+        
+        if df_melted.empty:
+            st.warning(f"No data to compare {cat1} and {cat2} for the current filters.")
+        else:
+            fig_comp = px.bar(
+                df_melted,
+                x='Category',
+                y='Value',
+                color='Metric',
+                facet_col='Tier',
+                barmode='group',
+                title=f"Sales vs. Profit Comparison: {cat1} vs. {cat2}",
+                labels={'Value': 'Value ($)', 'Category': 'Category', 'Metric': 'Metric'},
+                color_discrete_map={'TotalSales': '#4F46E5', 'TotalProfit': '#10B981'}
+            )
+            fig_comp.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1])) # Clean up facet labels
+            fig_comp.update_traces(texttemplate='$%{y:,.2s}', textposition='outside')
+            fig_comp.update_layout(xaxis_title="", yaxis_title="", height=450)
+            st.plotly_chart(fig_comp, use_container_width=True)
+
+st.caption("Sales, Profit, and City Tier data are synthetic for demonstration purposes.")
