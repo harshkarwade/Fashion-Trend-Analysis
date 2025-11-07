@@ -313,19 +313,42 @@ if df_selected_tier.empty:
     st.error("No sales data available for the selected combination of Tiers, Category, and Gender.")
 
 else:
-    # Chart 1: Price Segmentation Analysis
+    # Chart 1 (New): Sales vs. Profit by Price Segment (Grouped Bar)
     with chart_col1:
-        st.subheader(f"1. Price Segmentation Analysis in {filter_title}")
-        df_price_seg = df_selected_tier.groupby('Price_Segment')['Sales'].sum().reset_index()
+        st.subheader(f"1. Sales vs. Profit by Price Segment")
+        
+        df_price_agg = df_selected_tier.groupby('Price_Segment').agg(
+            TotalSales=('Sales', 'sum'),
+            TotalProfit=('Gross_Profit', 'sum')
+        ).reset_index()
+        
         segment_order = ['Low-End', 'Mid-Range', 'Premium', 'Luxury']
-        df_price_seg['Price_Segment'] = pd.Categorical(df_price_seg['Price_Segment'], categories=segment_order, ordered=True)
-        df_price_seg = df_price_seg.sort_values('Price_Segment')
-        fig_seg = px.bar(df_price_seg, x='Price_Segment', y='Sales', color='Price_Segment', title="Sales by Price Category", labels={'Sales': 'Total Sales ($)'}, color_discrete_sequence=px.colors.qualitative.Bold)
-        fig_seg.update_traces(texttemplate='%{y:$.2s}', textposition='outside')
-        fig_seg.update_layout(xaxis_title="", yaxis_title="")
-        st.plotly_chart(fig_seg, use_container_width=True)
+        df_price_agg['Price_Segment'] = pd.Categorical(df_price_agg['Price_Segment'], categories=segment_order, ordered=True)
+        df_price_agg = df_price_agg.sort_values('Price_Segment')
 
-    # Chart 2: Discount Strategy Analysis
+        df_melted_price = df_price_agg.melt(
+            id_vars='Price_Segment',
+            value_vars=['TotalSales', 'TotalProfit'],
+            var_name='Metric',
+            value_name='Value'
+        )
+
+        fig_seg_comp = px.bar(
+            df_melted_price,
+            x='Price_Segment',
+            y='Value',
+            color='Metric',
+            barmode='group',
+            title="Sales vs. Gross Profit by Price Segment",
+            labels={'Value': 'Value ($)', 'Price_Segment': 'Price Segment'},
+            color_discrete_map={'TotalSales': TIER_COLORS['Tier 1'], 'TotalProfit': TIER_COLORS['Tier 2']}
+        )
+        fig_seg_comp.update_traces(texttemplate='$%{y:,.2s}', textposition='outside')
+        fig_seg_comp.update_layout(xaxis_title="", yaxis_title="")
+        st.plotly_chart(fig_seg_comp, use_container_width=True)
+
+
+    # Chart 2 (Keep): Discount Strategy Analysis
     with chart_col2:
         st.subheader(f"2. Discount Strategy Analysis in {filter_title}")
         bins = [0, 10, 20, 30, 40, 50, 100]
@@ -338,7 +361,7 @@ else:
         fig_disc.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_disc, use_container_width=True)
         
-    # Chart 3: Profitability Analysis
+    # Chart 3 (Keep): Profitability Analysis
     with chart_col3:
         st.subheader(f"3. Profitability Analysis: Gross Profit by Category")
         df_profit_cat = df_selected_tier.groupby('Category')['Gross_Profit'].sum().reset_index().sort_values(by='Gross_Profit', ascending=False)
@@ -356,7 +379,7 @@ else:
         fig_profit.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_profit, use_container_width=True)
 
-    # Chart 4: Strategic Pricing Comparison (Price vs. Gender Split, depends on Category Filter)
+    # Chart 4 (Keep): Strategic Pricing Comparison
     with chart_col4:
         if category_filter == 'All Categories':
             st.subheader(f"4. Focus Trend: Sales Split by Gender")
@@ -404,7 +427,6 @@ else:
         # --- Comparison Filters ---
         comparison_cols = st.columns(2)
         
-        # Set initial selections for distinct categories
         default_index_cat1 = all_categories_list.index('Dresses') if 'Dresses' in all_categories_list else 0
         default_index_cat2 = all_categories_list.index('T-Shirts') if 'T-Shirts' in all_categories_list else min(1, len(all_categories_list) - 1) 
         
@@ -440,9 +462,8 @@ else:
                     barmode='group',
                     title=f"Sales vs. Profit Comparison: {cat1} vs. {cat2} in {tier_label}",
                     labels={'Value': 'Value ($)', 'Category': 'Category', 'Metric': 'Metric'},
-                    color_discrete_map={'TotalSales': '#4F46E5', 'TotalProfit': '#10B981'}
+                    color_discrete_map={'TotalSales': TIER_COLORS['Tier 1'], 'TotalProfit': TIER_COLORS['Tier 2']}
                 )
-                # Clean up facet labels (Tier=X becomes X)
                 fig_comp.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1])) 
                 fig_comp.update_traces(texttemplate='$%{y:,.2s}', textposition='outside')
                 fig_comp.update_layout(xaxis_title="", yaxis_title="", height=450)
