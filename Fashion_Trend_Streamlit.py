@@ -118,6 +118,8 @@ def generate_city_tier_data():
 # Load the data
 df_sales = generate_sales_data()
 df_cities = generate_city_tier_data()
+all_categories_list = df_sales['Category'].unique().tolist() # Used for comparison selector
+
 
 # --- 2. ML Prediction Logic (Simulated Random Forest Classifier) ---
 def mock_ml_predict_tier(discount_price, original_price, discount_pct):
@@ -165,8 +167,7 @@ selected_tiers = st.sidebar.multiselect(
 if st.session_state['predicted_tier_override']:
     selected_tiers = [st.session_state['predicted_tier_override']]
     
-all_categories = df_sales['Category'].unique().tolist()
-all_categories_filter = ['All Categories'] + all_categories
+all_categories_filter = ['All Categories'] + all_categories_list
 category_filter = st.sidebar.selectbox(
     "2. Filter by Product Category:",
     options=all_categories_filter
@@ -213,7 +214,6 @@ if submitted:
 st.sidebar.markdown("---")
 st.sidebar.button("🔄 Reset Filters / Analyze All Tiers", on_click=reset_tiers_callback, use_container_width=True)
 st.sidebar.markdown("---")
-
 
 # --- 5. Data Filtering and KPI Calculation (Dynamic Filtering) ---
 df_selected_tier = df_sales[df_sales['Tier'].isin(selected_tiers)].copy()
@@ -356,7 +356,7 @@ else:
         fig_profit.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_profit, use_container_width=True)
 
-    # Chart 4: Strategic Pricing Comparison
+    # Chart 4: Strategic Pricing Comparison (Price vs. Gender Split, depends on Category Filter)
     with chart_col4:
         if category_filter == 'All Categories':
             st.subheader(f"4. Focus Trend: Sales Split by Gender")
@@ -396,46 +396,56 @@ else:
         fig_treemap.update_layout(margin=dict(t=50, l=25, r=25, b=25))
         st.plotly_chart(fig_treemap, use_container_width=True)
 
-    # Chart 6: Dual Category Comparison (NEW)
+    # Chart 6: Dual Category Comparison
     with deep_col2:
         st.subheader("Comparative Profitability by Category")
+        st.caption("Compare two specific categories side-by-side across the selected tier(s).")
         
         # --- Comparison Filters ---
         comparison_cols = st.columns(2)
-        cat1 = comparison_cols[0].selectbox("Category A:", options=all_categories, index=0)
-        cat2 = comparison_cols[1].selectbox("Category B:", options=all_categories, index=1)
         
-        df_comp = df_selected_tier[df_selected_tier['Category'].isin([cat1, cat2])].copy()
+        # Set initial selections for distinct categories
+        default_index_cat1 = all_categories_list.index('Dresses') if 'Dresses' in all_categories_list else 0
+        default_index_cat2 = all_categories_list.index('T-Shirts') if 'T-Shirts' in all_categories_list else min(1, len(all_categories_list) - 1) 
         
-        df_agg_comp = df_comp.groupby(['Tier', 'Category']).agg(
-            TotalSales=('Sales', 'sum'),
-            TotalProfit=('Gross_Profit', 'sum')
-        ).reset_index()
-
-        df_melted = df_agg_comp.melt(
-            id_vars=['Tier', 'Category'], 
-            value_vars=['TotalSales', 'TotalProfit'], 
-            var_name='Metric', 
-            value_name='Value'
-        )
+        cat1 = comparison_cols[0].selectbox("Category A:", options=all_categories_list, index=default_index_cat1, key='comp_cat_a')
+        cat2 = comparison_cols[1].selectbox("Category B:", options=all_categories_list, index=default_index_cat2, key='comp_cat_b')
         
-        if df_melted.empty:
-            st.warning(f"No data to compare {cat1} and {cat2} for the current filters.")
+        if cat1 == cat2:
+             st.warning("Please select two different categories for a meaningful comparison.")
         else:
-            fig_comp = px.bar(
-                df_melted,
-                x='Category',
-                y='Value',
-                color='Metric',
-                facet_col='Tier',
-                barmode='group',
-                title=f"Sales vs. Profit Comparison: {cat1} vs. {cat2}",
-                labels={'Value': 'Value ($)', 'Category': 'Category', 'Metric': 'Metric'},
-                color_discrete_map={'TotalSales': '#4F46E5', 'TotalProfit': '#10B981'}
+            df_comp = df_selected_tier[df_selected_tier['Category'].isin([cat1, cat2])].copy()
+            
+            df_agg_comp = df_comp.groupby(['Tier', 'Category']).agg(
+                TotalSales=('Sales', 'sum'),
+                TotalProfit=('Gross_Profit', 'sum')
+            ).reset_index()
+
+            df_melted = df_agg_comp.melt(
+                id_vars=['Tier', 'Category'], 
+                value_vars=['TotalSales', 'TotalProfit'], 
+                var_name='Metric', 
+                value_name='Value'
             )
-            fig_comp.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1])) # Clean up facet labels
-            fig_comp.update_traces(texttemplate='$%{y:,.2s}', textposition='outside')
-            fig_comp.update_layout(xaxis_title="", yaxis_title="", height=450)
-            st.plotly_chart(fig_comp, use_container_width=True)
+            
+            if df_melted.empty:
+                st.warning(f"No data to compare {cat1} and {cat2} for the current tier/gender filters.")
+            else:
+                fig_comp = px.bar(
+                    df_melted,
+                    x='Category',
+                    y='Value',
+                    color='Metric',
+                    facet_col='Tier',
+                    barmode='group',
+                    title=f"Sales vs. Profit Comparison: {cat1} vs. {cat2} in {tier_label}",
+                    labels={'Value': 'Value ($)', 'Category': 'Category', 'Metric': 'Metric'},
+                    color_discrete_map={'TotalSales': '#4F46E5', 'TotalProfit': '#10B981'}
+                )
+                # Clean up facet labels (Tier=X becomes X)
+                fig_comp.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1])) 
+                fig_comp.update_traces(texttemplate='$%{y:,.2s}', textposition='outside')
+                fig_comp.update_layout(xaxis_title="", yaxis_title="", height=450)
+                st.plotly_chart(fig_comp, use_container_width=True)
 
 st.caption("Sales, Profit, and City Tier data are synthetic for demonstration purposes.")
