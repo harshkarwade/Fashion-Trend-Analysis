@@ -159,9 +159,7 @@ all_categories_list = df_sales['Category'].unique().tolist()
 
 # --- 2. ML Prediction Logic (Simulated Random Forest Classifier) ---
 def mock_ml_predict_tier(discount_price, original_price, discount_pct):
-    """
-    Simulates the prediction based on the K-Means clustering outcomes.
-    """
+    """Simulates the prediction based on the K-Means clustering outcomes."""
     if original_price >= 150 and discount_pct <= 20:
         return 'Tier 1' # Premium/High-End, Low Discount
     elif discount_pct >= 35 and discount_price <= 40:
@@ -327,28 +325,39 @@ df_filtered_cities = df_cities[df_cities['Tier'].isin(selected_tiers)].copy()
 
 # Determine visual emphasis and center based on selection count
 if not df_filtered_cities.empty and len(selected_tiers) == 1:
-    marker_size = 40 # Large size for emphasis
+    marker_size_base = 35 # Base size for emphasis
     zoom_level = 5.0 # Zoom in slightly more for single tier focus
     center_lat = df_filtered_cities['Lat'].mean()
     center_lon = df_filtered_cities['Lon'].mean()
+    
+    # Create a MarkerSize column for visual scaling in Plotly Express
+    df_filtered_cities['MarkerSize'] = marker_size_base 
+    
 else:
-    marker_size = 15 # Default marker size
+    marker_size_base = 15 # Default marker size
     zoom_level = 4.2
     center_lat = 22.0
     center_lon = 78
+    df_filtered_cities['MarkerSize'] = marker_size_base
+
 
 fig_map = px.scatter_mapbox(
     df_filtered_cities, lat="Lat", lon="Lon", hover_name="City",
     hover_data={"State": True, "Tier": True, "Lat": False, "Lon": False},
     color="Tier", 
-    size_max=marker_size,
+    size='MarkerSize', # Use the calculated size field here
+    size_max=marker_size_base * 0.75, # Set max size based on the determined base
     zoom=zoom_level,
     center={"lat": center_lat, "lon": center_lon},
     title=f"Geographic Focus: {', '.join(selected_tiers)} Cities", color_discrete_map=TIER_COLORS,
 )
 
-# Apply a fixed marker size and strong outline for visibility, simulating an "area" highlight
-fig_map.update_traces(marker=dict(size=marker_size * 0.75, opacity=0.8, symbol='circle', line=dict(width=2, color='DarkSlateGrey')))
+# FIX: Update marker properties directly using mapbox trace properties (marker_size is ignored here since 'size' is used above)
+fig_map.update_traces(
+    marker_opacity=0.8,
+    marker_line_width=2,
+    marker_line_color='DarkSlateGrey'
+)
 
 fig_map.update_layout(
     mapbox=dict(style="open-street-map", center={"lat": center_lat, "lon": center_lon}, zoom=zoom_level),
