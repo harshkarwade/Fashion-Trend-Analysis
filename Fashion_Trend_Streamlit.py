@@ -96,8 +96,9 @@ def generate_sales_data():
 
 @st.cache_data
 def generate_city_tier_data():
-    """Generates synthetic city tier data for geographic mapping."""
+    """Generates an extensive list of synthetic city tier data for geographic mapping."""
     city_data = [
+        # --- Tier 1 Cities (Top 8 Metros) ---
         {'City': 'Ahmedabad', 'State': 'Gujarat', 'Tier': 'Tier 1', 'Lat': 23.0225, 'Lon': 72.5714},
         {'City': 'Bengaluru', 'State': 'Karnataka', 'Tier': 'Tier 1', 'Lat': 12.9716, 'Lon': 77.5946},
         {'City': 'Chennai', 'State': 'Tamil Nadu', 'Tier': 'Tier 1', 'Lat': 13.0827, 'Lon': 80.2707},
@@ -106,19 +107,54 @@ def generate_city_tier_data():
         {'City': 'Kolkata', 'State': 'West Bengal', 'Tier': 'Tier 1', 'Lat': 22.5726, 'Lon': 88.3639},
         {'City': 'Mumbai', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 19.0760, 'Lon': 72.8777},
         {'City': 'Pune', 'State': 'Maharashtra', 'Tier': 'Tier 1', 'Lat': 18.5204, 'Lon': 73.8567},
+        
+        # --- Tier 2 Cities (Expanded List, including Nagpur) ---
         {'City': 'Agra', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 27.1767, 'Lon': 78.0081},
         {'City': 'Amritsar', 'State': 'Punjab', 'Tier': 'Tier 2', 'Lat': 31.6340, 'Lon': 74.8723},
         {'City': 'Bhopal', 'State': 'Madhya Pradesh', 'Tier': 'Tier 2', 'Lat': 23.2599, 'Lon': 77.4126},
+        {'City': 'Bhubaneswar', 'State': 'Odisha', 'Tier': 'Tier 2', 'Lat': 20.2961, 'Lon': 85.8245},
+        {'City': 'Chandigarh', 'State': 'Chandigarh', 'Tier': 'Tier 2', 'Lat': 30.7333, 'Lon': 76.7794},
+        {'City': 'Coimbatore', 'State': 'Tamil Nadu', 'Tier': 'Tier 2', 'Lat': 11.0168, 'Lon': 76.9558},
+        {'City': 'Dehradun', 'State': 'Uttarakhand', 'Tier': 'Tier 2', 'Lat': 30.3165, 'Lon': 78.0322},
+        {'City': 'Faridabad', 'State': 'Haryana', 'Tier': 'Tier 2', 'Lat': 28.4089, 'Lon': 77.3178},
+        {'City': 'Ghaziabad', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 28.6692, 'Lon': 77.4538},
+        {'City': 'Indore', 'State': 'Madhya Pradesh', 'Tier': 'Tier 2', 'Lat': 22.7196, 'Lon': 75.8577},
+        {'City': 'Jaipur', 'State': 'Rajasthan', 'Tier': 'Tier 2', 'Lat': 26.9124, 'Lon': 75.7873},
+        {'City': 'Kanpur', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 26.4499, 'Lon': 80.3319},
+        {'City': 'Kochi', 'State': 'Kerala', 'Tier': 'Tier 2', 'Lat': 9.9312, 'Lon': 76.2673},
+        {'City': 'Lucknow', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 26.8467, 'Lon': 80.9462},
+        {'City': 'Nagpur', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 21.1458, 'Lon': 79.0882}, # Added Nagpur
+        {'City': 'Nashik', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 19.9975, 'Lon': 73.7898},
+        {'City': 'Patna', 'State': 'Bihar', 'Tier': 'Tier 2', 'Lat': 25.5941, 'Lon': 85.1376},
+        {'City': 'Surat', 'State': 'Gujarat', 'Tier': 'Tier 2', 'Lat': 21.1702, 'Lon': 72.8311},
+        {'City': 'Vadodara', 'State': 'Gujarat', 'Tier': 'Tier 2', 'Lat': 22.3072, 'Lon': 73.1812},
+        {'City': 'Visakhapatnam', 'State': 'Andhra Pradesh', 'Tier': 'Tier 2', 'Lat': 17.6868, 'Lon': 83.2185},
+        
+        # --- Tier 3 Cities (Expanded List) ---
         {'City': 'Bikaner', 'State': 'Rajasthan', 'Tier': 'Tier 3', 'Lat': 28.0229, 'Lon': 73.3119},
         {'City': 'Cuttack', 'State': 'Odisha', 'Tier': 'Tier 3', 'Lat': 20.4625, 'Lon': 85.8828},
         {'City': 'Gandhinagar', 'State': 'Gujarat', 'Tier': 'Tier 3', 'Lat': 23.2639, 'Lon': 72.6412},
+        {'City': 'Hosur', 'State': 'Tamil Nadu', 'Tier': 'Tier 3', 'Lat': 12.7483, 'Lon': 77.8208},
+        {'City': 'Jhansi', 'State': 'Uttar Pradesh', 'Tier': 'Tier 3', 'Lat': 25.4484, 'Lon': 78.5685},
+        {'City': 'Junagadh', 'State': 'Gujarat', 'Tier': 'Tier 3', 'Lat': 21.5222, 'Lon': 70.4579},
+        {'City': 'Madurai', 'State': 'Tamil Nadu', 'Tier': 'Tier 3', 'Lat': 9.9252, 'Lon': 78.1198},
+        {'City': 'Meerut', 'State': 'Uttar Pradesh', 'Tier': 'Tier 3', 'Lat': 28.9845, 'Lon': 77.7064},
+        {'City': 'Mysuru', 'State': 'Karnataka', 'Tier': 'Tier 3', 'Lat': 12.2958, 'Lon': 76.6394},
+        {'City': 'Rajkot', 'State': 'Gujarat', 'Tier': 'Tier 3', 'Lat': 22.3039, 'Lon': 70.8037},
+        {'City': 'Rajahmundry', 'State': 'Andhra Pradesh', 'Tier': 'Tier 3', 'Lat': 17.0000, 'Lon': 81.7833},
+        {'City': 'Roorkee', 'State': 'Uttarakhand', 'Tier': 'Tier 3', 'Lat': 29.8753, 'Lon': 77.8976},
+        {'City': 'Rohtak', 'State': 'Haryana', 'Tier': 'Tier 3', 'Lat': 28.8955, 'Lon': 76.6066},
+        {'City': 'Salem', 'State': 'Tamil Nadu', 'Tier': 'Tier 3', 'Lat': 11.6643, 'Lon': 78.1460},
+        {'City': 'Shimla', 'State': 'Himachal Pradesh', 'Tier': 'Tier 3', 'Lat': 31.1048, 'Lon': 77.1734},
+        {'City': 'Udaipur', 'State': 'Rajasthan', 'Tier': 'Tier 3', 'Lat': 24.5854, 'Lon': 73.7125},
+        {'City': 'Vijayawada', 'State': 'Andhra Pradesh', 'Tier': 'Tier 3', 'Lat': 16.5062, 'Lon': 80.6480},
     ]
     return pd.DataFrame(city_data)
 
 # Load the data
 df_sales = generate_sales_data()
 df_cities = generate_city_tier_data()
-all_categories_list = df_sales['Category'].unique().tolist() # Used for comparison selector
+all_categories_list = df_sales['Category'].unique().tolist()
 
 
 # --- 2. ML Prediction Logic (Simulated Random Forest Classifier) ---
@@ -313,7 +349,7 @@ if df_selected_tier.empty:
     st.error("No sales data available for the selected combination of Tiers, Category, and Gender.")
 
 else:
-    # Chart 1 (New): Sales vs. Profit by Price Segment (Grouped Bar)
+    # Chart 1: Sales vs. Profit by Price Segment (Grouped Bar)
     with chart_col1:
         st.subheader(f"1. Sales vs. Profit by Price Segment")
         
@@ -348,7 +384,7 @@ else:
         st.plotly_chart(fig_seg_comp, use_container_width=True)
 
 
-    # Chart 2 (Keep): Discount Strategy Analysis
+    # Chart 2: Discount Strategy Analysis
     with chart_col2:
         st.subheader(f"2. Discount Strategy Analysis in {filter_title}")
         bins = [0, 10, 20, 30, 40, 50, 100]
@@ -361,7 +397,7 @@ else:
         fig_disc.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_disc, use_container_width=True)
         
-    # Chart 3 (Keep): Profitability Analysis
+    # Chart 3: Profitability Analysis
     with chart_col3:
         st.subheader(f"3. Profitability Analysis: Gross Profit by Category")
         df_profit_cat = df_selected_tier.groupby('Category')['Gross_Profit'].sum().reset_index().sort_values(by='Gross_Profit', ascending=False)
@@ -379,7 +415,7 @@ else:
         fig_profit.update_layout(xaxis_title="", yaxis_title="")
         st.plotly_chart(fig_profit, use_container_width=True)
 
-    # Chart 4 (Keep): Strategic Pricing Comparison
+    # Chart 4: Strategic Pricing Comparison
     with chart_col4:
         if category_filter == 'All Categories':
             st.subheader(f"4. Focus Trend: Sales Split by Gender")
