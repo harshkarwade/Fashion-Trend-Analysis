@@ -123,7 +123,7 @@ def generate_city_tier_data():
         {'City': 'Kanpur', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 26.4499, 'Lon': 80.3319},
         {'City': 'Kochi', 'State': 'Kerala', 'Tier': 'Tier 2', 'Lat': 9.9312, 'Lon': 76.2673},
         {'City': 'Lucknow', 'State': 'Uttar Pradesh', 'Tier': 'Tier 2', 'Lat': 26.8467, 'Lon': 80.9462},
-        {'City': 'Nagpur', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 21.1458, 'Lon': 79.0882}, # Added Nagpur
+        {'City': 'Nagpur', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 21.1458, 'Lon': 79.0882}, 
         {'City': 'Nashik', 'State': 'Maharashtra', 'Tier': 'Tier 2', 'Lat': 19.9975, 'Lon': 73.7898},
         {'City': 'Patna', 'State': 'Bihar', 'Tier': 'Tier 2', 'Lat': 25.5941, 'Lon': 85.1376},
         {'City': 'Surat', 'State': 'Gujarat', 'Tier': 'Tier 2', 'Lat': 21.1702, 'Lon': 72.8311},
@@ -325,15 +325,33 @@ st.header("🇮🇳 Market Distribution: City Tier Map")
 
 df_filtered_cities = df_cities[df_cities['Tier'].isin(selected_tiers)].copy()
 
+# Determine visual emphasis and center based on selection count
+if not df_filtered_cities.empty and len(selected_tiers) == 1:
+    marker_size = 40 # Large size for emphasis
+    zoom_level = 5.0 # Zoom in slightly more for single tier focus
+    center_lat = df_filtered_cities['Lat'].mean()
+    center_lon = df_filtered_cities['Lon'].mean()
+else:
+    marker_size = 15 # Default marker size
+    zoom_level = 4.2
+    center_lat = 22.0
+    center_lon = 78
+
 fig_map = px.scatter_mapbox(
     df_filtered_cities, lat="Lat", lon="Lon", hover_name="City",
     hover_data={"State": True, "Tier": True, "Lat": False, "Lon": False},
-    color="Tier", size_max=25, zoom=4.2, center={"lat": 22.0, "lon": 78},
+    color="Tier", 
+    size_max=marker_size,
+    zoom=zoom_level,
+    center={"lat": center_lat, "lon": center_lon},
     title=f"Geographic Focus: {', '.join(selected_tiers)} Cities", color_discrete_map=TIER_COLORS,
 )
 
+# Apply a fixed marker size and strong outline for visibility, simulating an "area" highlight
+fig_map.update_traces(marker=dict(size=marker_size * 0.75, opacity=0.8, symbol='circle', line=dict(width=2, color='DarkSlateGrey')))
+
 fig_map.update_layout(
-    mapbox=dict(style="open-street-map", center={"lat": 22.0, "lon": 78}, zoom=4.2),
+    mapbox=dict(style="open-street-map", center={"lat": center_lat, "lon": center_lon}, zoom=zoom_level),
     margin={"r":0,"t":40,"l":0,"b":0}
 )
 st.plotly_chart(fig_map, use_container_width=True)
